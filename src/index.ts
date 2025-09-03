@@ -1,11 +1,7 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const p5 = require('p5');
 
-export function hello(): string {
-  return 'Hello World';
-}
-
-interface P5Instance {
+type P5Instance = {
   createCanvas: (width: number, height: number) => void;
   background: (color: number) => void;
   clear: () => void;
@@ -16,6 +12,10 @@ interface P5Instance {
   ellipse: (x: number, y: number, w: number, h?: number) => void;
   setup?: () => void;
   draw?: () => void;
+};
+
+export function hello(): string {
+  return 'Hello World';
 }
 
 export function setup(p: P5Instance): void {

@@ -39,9 +39,6 @@ export default {
       },
       moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
       testEnvironment: 'node',
-      transformIgnorePatterns: [
-        'node_modules/(?!(p5)/)'
-      ],
       moduleNameMapper: {
         '^p5$': '<rootDir>/__mocks__/p5.js'
       }
@@ -64,9 +61,6 @@ export default {
       moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
       testEnvironment: 'jsdom',
       setupFiles: ['jest-canvas-mock'],
-      transformIgnorePatterns: [
-        'node_modules/(?!(p5)/)'
-      ],
       moduleNameMapper: {
         '^p5$': '<rootDir>/__mocks__/p5.js'
       }

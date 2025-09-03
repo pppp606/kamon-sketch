@@ -32,6 +32,7 @@
     "src/**/*"
   ],
   "exclude": [
+    "node_modules/p5",
     "node_modules",
     "dist",
     "test"
