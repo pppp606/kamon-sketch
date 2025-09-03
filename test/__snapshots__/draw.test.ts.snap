@@ -1,0 +1,347 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`p5.js Drawing Tests canvas drawing operations snapshot 1`] = `
+[
+  {
+    "props": {
+      "height": 400,
+      "width": 400,
+      "x": 0,
+      "y": 0,
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "clearRect",
+  },
+  {
+    "props": {
+      "value": "#dcdcdc",
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "fillStyle",
+  },
+  {
+    "props": {
+      "height": 400,
+      "width": 400,
+      "x": 0,
+      "y": 0,
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "fillRect",
+  },
+  {
+    "props": {
+      "value": "#ff0000",
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "strokeStyle",
+  },
+  {
+    "props": {
+      "value": 2,
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "lineWidth",
+  },
+  {
+    "props": {},
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "beginPath",
+  },
+  {
+    "props": {
+      "x": 50,
+      "y": 50,
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "moveTo",
+  },
+  {
+    "props": {
+      "x": 350,
+      "y": 350,
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "lineTo",
+  },
+  {
+    "props": {
+      "path": [
+        {
+          "props": {},
+          "transform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+          ],
+          "type": "beginPath",
+        },
+        {
+          "props": {
+            "x": 50,
+            "y": 50,
+          },
+          "transform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+          ],
+          "type": "moveTo",
+        },
+        {
+          "props": {
+            "x": 350,
+            "y": 350,
+          },
+          "transform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+          ],
+          "type": "lineTo",
+        },
+      ],
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "stroke",
+  },
+  {
+    "props": {
+      "value": "#00ff00",
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "fillStyle",
+  },
+  {
+    "props": {
+      "value": "#000000",
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "strokeStyle",
+  },
+  {
+    "props": {
+      "value": 1,
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "lineWidth",
+  },
+  {
+    "props": {},
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "beginPath",
+  },
+  {
+    "props": {
+      "anticlockwise": false,
+      "endAngle": 6.283185307179586,
+      "radius": 50,
+      "startAngle": 0,
+      "x": 200,
+      "y": 200,
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "arc",
+  },
+  {
+    "props": {
+      "fillRule": "nonzero",
+      "path": [
+        {
+          "props": {},
+          "transform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+          ],
+          "type": "beginPath",
+        },
+        {
+          "props": {
+            "anticlockwise": false,
+            "endAngle": 6.283185307179586,
+            "radius": 50,
+            "startAngle": 0,
+            "x": 200,
+            "y": 200,
+          },
+          "transform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+          ],
+          "type": "arc",
+        },
+      ],
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "fill",
+  },
+  {
+    "props": {
+      "path": [
+        {
+          "props": {},
+          "transform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+          ],
+          "type": "beginPath",
+        },
+        {
+          "props": {
+            "anticlockwise": false,
+            "endAngle": 6.283185307179586,
+            "radius": 50,
+            "startAngle": 0,
+            "x": 200,
+            "y": 200,
+          },
+          "transform": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+          ],
+          "type": "arc",
+        },
+      ],
+    },
+    "transform": [
+      1,
+      0,
+      0,
+      1,
+      0,
+      0,
+    ],
+    "type": "stroke",
+  },
+]
+`;
