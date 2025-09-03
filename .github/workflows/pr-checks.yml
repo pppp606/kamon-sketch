@@ -1,0 +1,93 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  pr-validation:
+    name: PR Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+        
+      - name: Run all CI checks
+        run: npm run ci
+        
+      - name: Generate test coverage report
+        run: npm run test:coverage
+        
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+        continue-on-error: true
+        
+      - name: Comment PR with test results
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let coverageSummary = '';
+            try {
+              const summary = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json', 'utf8'));
+              const total = summary.total;
+              
+              coverageSummary = `
+              ## 📊 Test Coverage Summary
+              
+              | Metric | Coverage | Threshold |
+              |--------|----------|-----------|
+              | **Lines** | ${total.lines.pct}% | 80% |
+              | **Functions** | ${total.functions.pct}% | 80% |
+              | **Branches** | ${total.branches.pct}% | 70% |
+              | **Statements** | ${total.statements.pct}% | 80% |
+              `;
+            } catch (error) {
+              coverageSummary = '⚠️ Coverage report not available';
+            }
+            
+            const comment = `
+            ## ✅ CI チェック完了
+            
+            すべての品質チェックが正常に完了しました：
+            
+            - ✅ TypeScript 型チェック
+            - ✅ ESLint 準拠チェック  
+            - ✅ Jest テスト実行
+            - ✅ ビルド成功
+            
+            ${coverageSummary}
+            
+            ---
+            *このコメントは GitHub Actions により自動生成されました*
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
