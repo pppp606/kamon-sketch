@@ -1,5 +1,5 @@
 import 'jest-canvas-mock';
-import { setup, draw } from '../src/index';
+import { setup, draw, createSketch } from '../src/index';
 
 interface P5Instance {
   createCanvas: jest.Mock;
@@ -104,5 +104,13 @@ describe('p5.js Drawing Tests', () => {
     // Take snapshot of canvas operations
     const events = (realCtx as any).__getEvents();
     expect(events).toMatchSnapshot();
+  });
+
+  test('should create p5.js sketch instance', () => {
+    // Test that the function exists and is callable
+    expect(typeof createSketch).toBe('function');
+    
+    // Should not throw errors when called
+    expect(() => createSketch()).not.toThrow();
   });
 });
