@@ -10,10 +10,7 @@ export default {
   ],
   transform: {
     '^.+\\.ts$': ['ts-jest', {
-      useESM: true,
-      tsconfig: {
-        module: 'esnext'
-      }
+      useESM: true
     }]
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
