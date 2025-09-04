@@ -1,4 +1,17 @@
-import { hello, setup, draw, createSketch, mousePressed, mouseDragged, mouseReleased, getCompassArc } from '../src/index';
+import { 
+  hello, 
+  setup, 
+  draw, 
+  createSketch, 
+  mousePressed, 
+  mouseDragged, 
+  mouseReleased, 
+  getCompassArc,
+  setDrawingMode,
+  getDrawingMode,
+  getLines,
+  getCurrentLine
+} from '../src/index';
 
 interface P5Instance {
   createCanvas: jest.Mock;
@@ -79,9 +92,155 @@ describe('p5.js integration', () => {
     expect(() => createSketch()).not.toThrow();
   });
 
-  describe('mouse interactions', () => {
+  describe('line drawing mode', () => {
     beforeEach(() => {
       setup(p);
+      setDrawingMode('line');
+    });
+
+    test('should default to line drawing mode', () => {
+      setup(p); // Reset to defaults
+      expect(getDrawingMode()).toBe('line');
+    });
+
+    test('should set first point on mouse press', () => {
+      p.mouseX = 100;
+      p.mouseY = 150;
+      
+      mousePressed(p);
+      
+      const currentLine = getCurrentLine();
+      expect(currentLine?.getFirstPoint()).toEqual({ x: 100, y: 150 });
+      expect(currentLine?.getState()).toBe('FIRST_POINT');
+    });
+
+    test('should complete line and start new one on second click', () => {
+      p.mouseX = 100;
+      p.mouseY = 150;
+      mousePressed(p);
+      
+      p.mouseX = 200;
+      p.mouseY = 250;
+      mousePressed(p);
+      
+      const lines = getLines();
+      expect(lines).toHaveLength(1);
+      expect(lines[0].getFirstPoint()).toEqual({ x: 100, y: 150 });
+      expect(lines[0].getSecondPoint()).toEqual({ x: 200, y: 250 });
+      
+      const currentLine = getCurrentLine();
+      expect(currentLine?.getFirstPoint()).toEqual({ x: 200, y: 250 });
+      expect(currentLine?.getState()).toBe('FIRST_POINT');
+    });
+
+    test('should support drawing multiple lines', () => {
+      // First line
+      p.mouseX = 0;
+      p.mouseY = 0;
+      mousePressed(p);
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      // Second line (starts from end of first)
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      // Third line (starts from end of second)
+      p.mouseX = 300;
+      p.mouseY = 300;
+      mousePressed(p);
+      
+      const lines = getLines();
+      expect(lines).toHaveLength(3);
+      expect(lines[0].getFirstPoint()).toEqual({ x: 0, y: 0 });
+      expect(lines[0].getSecondPoint()).toEqual({ x: 100, y: 100 });
+      expect(lines[1].getFirstPoint()).toEqual({ x: 100, y: 100 });
+      expect(lines[1].getSecondPoint()).toEqual({ x: 200, y: 100 });
+      expect(lines[2].getFirstPoint()).toEqual({ x: 200, y: 100 });
+      expect(lines[2].getSecondPoint()).toEqual({ x: 300, y: 300 });
+      
+      // And there should be a current line ready for the next segment
+      const currentLine = getCurrentLine();
+      expect(currentLine?.getFirstPoint()).toEqual({ x: 300, y: 300 });
+      expect(currentLine?.getState()).toBe('FIRST_POINT');
+    });
+
+    test('should not respond to drag events in line mode', () => {
+      p.mouseX = 100;
+      p.mouseY = 150;
+      mousePressed(p);
+      
+      const beforeDrag = getCurrentLine()?.getFirstPoint();
+      
+      p.mouseX = 200;
+      p.mouseY = 250;
+      mouseDragged(p);
+      
+      const afterDrag = getCurrentLine()?.getFirstPoint();
+      expect(afterDrag).toEqual(beforeDrag);
+    });
+
+    test('should not respond to release events in line mode', () => {
+      p.mouseX = 100;
+      p.mouseY = 150;
+      mousePressed(p);
+      
+      const beforeRelease = getCurrentLine()?.getState();
+      
+      mouseReleased();
+      
+      const afterRelease = getCurrentLine()?.getState();
+      expect(afterRelease).toEqual(beforeRelease);
+    });
+  });
+
+  describe('drawing mode switching', () => {
+    beforeEach(() => {
+      setup(p);
+    });
+
+    test('should switch between line and compass modes', () => {
+      expect(getDrawingMode()).toBe('line');
+      
+      setDrawingMode('compass');
+      expect(getDrawingMode()).toBe('compass');
+      
+      setDrawingMode('line');
+      expect(getDrawingMode()).toBe('line');
+    });
+
+    test('should reset compass when switching to line mode', () => {
+      setDrawingMode('compass');
+      p.mouseX = 100;
+      p.mouseY = 150;
+      mousePressed(p);
+      
+      const arc = getCompassArc();
+      expect(arc?.getState()).toBe('CENTER_SET');
+      
+      setDrawingMode('line');
+      expect(arc?.getState()).toBe('IDLE');
+    });
+
+    test('should clear current line when switching to compass mode', () => {
+      setDrawingMode('line');
+      p.mouseX = 100;
+      p.mouseY = 150;
+      mousePressed(p);
+      
+      expect(getCurrentLine()).not.toBeNull();
+      
+      setDrawingMode('compass');
+      expect(getCurrentLine()).toBeNull();
+    });
+  });
+
+  describe('compass drawing mode', () => {
+    beforeEach(() => {
+      setup(p);
+      setDrawingMode('compass');
     });
 
     test('should set center point on first mouse press', () => {
@@ -172,10 +331,20 @@ describe('p5.js integration', () => {
       }
     });
 
-    test('should handle mouse interactions when compassArc is null', () => {
-      expect(() => mousePressed(p)).not.toThrow();
-      expect(() => mouseDragged(p)).not.toThrow();
-      expect(() => mouseReleased()).not.toThrow();
+    test('should handle drawing interactions correctly in compass mode', () => {
+      // Should work in compass mode as before
+      p.mouseX = 100;
+      p.mouseY = 150;
+      mousePressed(p);
+      
+      p.mouseX = 200;
+      p.mouseY = 250;
+      mouseDragged(p);
+      
+      mouseReleased();
+      
+      const arc = getCompassArc();
+      expect(arc?.getState()).toBe('CENTER_SET');
     });
   });
 });
