@@ -10,7 +10,8 @@ import {
   setDrawingMode,
   getDrawingMode,
   getLines,
-  getCurrentLine
+  getCurrentLine,
+  getSelection
 } from '../src/index';
 
 interface P5Instance {
@@ -345,6 +346,184 @@ describe('p5.js integration', () => {
       
       const arc = getCompassArc();
       expect(arc?.getState()).toBe('CENTER_SET');
+    });
+  });
+
+  describe('selection integration', () => {
+    beforeEach(() => {
+      setup(p);
+      setDrawingMode('line');
+    });
+
+    test('should initialize selection system during setup', () => {
+      setup(p);
+      const selection = getSelection();
+      expect(selection).toBeDefined();
+      expect(selection.getSelectedElement()).toBeNull();
+    });
+
+    test('should select a line when clicking near it', () => {
+      // Create a line first
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      // Click near the line to select it
+      p.mouseX = 150;
+      p.mouseY = 105; // 5 pixels away from line
+      mousePressed(p);
+      
+      const selection = getSelection();
+      const selectedElement = selection.getSelectedElement();
+      expect(selectedElement).not.toBeNull();
+      expect(selectedElement?.type).toBe('line');
+    });
+
+    test('should not select a line when clicking far from it', () => {
+      // Create a line first
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      // Click far from the line
+      p.mouseX = 150;
+      p.mouseY = 150; // More than threshold distance
+      mousePressed(p);
+      
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).toBeNull();
+    });
+
+    test('should clear selection when clicking in empty space', () => {
+      // Create and select a line
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+      
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).not.toBeNull();
+      
+      // Click in empty space
+      p.mouseX = 300;
+      p.mouseY = 300;
+      mousePressed(p);
+      
+      expect(selection.getSelectedElement()).toBeNull();
+    });
+
+    test('should select closest element when multiple elements are present', () => {
+      // Create first line
+      p.mouseX = 50;
+      p.mouseY = 50;
+      mousePressed(p);
+      p.mouseX = 150;
+      p.mouseY = 50;
+      mousePressed(p);
+      
+      // Create second line
+      p.mouseX = 50;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      // Click closer to first line
+      p.mouseX = 100;
+      p.mouseY = 55; // Closer to first line at y=50
+      mousePressed(p);
+      
+      const selection = getSelection();
+      const selectedElement = selection.getSelectedElement();
+      expect(selectedElement).not.toBeNull();
+      expect(selectedElement?.type).toBe('line');
+      
+      const lines = getLines();
+      expect(selectedElement?.element).toBe(lines[0]); // Should be the first line
+    });
+
+    test('should prevent new line drawing when selecting existing element', () => {
+      // Create a line first
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      const linesCountBefore = getLines().length;
+      
+      // Click near the line to select it (should not create new line)
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+      
+      const linesCountAfter = getLines().length;
+      expect(linesCountAfter).toBe(linesCountBefore); // No new line created
+      
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).not.toBeNull();
+    });
+
+    test('should render selection highlight during draw', () => {
+      // Create and select a line
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+      
+      // Mock the selection's drawHighlight method to track if it's called
+      const selection = getSelection();
+      const drawHighlightSpy = jest.spyOn(selection, 'drawHighlight');
+      
+      draw(p);
+      
+      expect(drawHighlightSpy).toHaveBeenCalledWith(p);
+    });
+  });
+
+  describe('compass arc selection', () => {
+    beforeEach(() => {
+      setup(p);
+      setDrawingMode('compass');
+    });
+
+    test('should select compass arc when clicking near it', () => {
+      // Create a compass arc
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p); // Center at (100, 100)
+      p.mouseX = 150;
+      p.mouseY = 100;
+      mousePressed(p); // Radius point at (150, 100), so radius = 50
+      p.mouseX = 150;
+      p.mouseY = 150;
+      mousePressed(p); // Start drawing at (150, 150)
+      
+      // Click near the arc circle to select it (radius = 50, center = (100, 100))
+      // Point (150, 100) should be exactly on the circle
+      p.mouseX = 150;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      const selection = getSelection();
+      const selectedElement = selection.getSelectedElement();
+      expect(selectedElement).not.toBeNull();
+      expect(selectedElement?.type).toBe('arc');
     });
   });
 });
