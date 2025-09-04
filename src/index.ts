@@ -48,7 +48,7 @@ export function draw(p: P5Instance): void {
   }
 }
 
-function mousePressed(p: P5Instance): void {
+export function mousePressed(p: P5Instance): void {
   if (!compassArc) return;
   
   const state = compassArc.getState();
@@ -63,7 +63,7 @@ function mousePressed(p: P5Instance): void {
   }
 }
 
-function mouseDragged(p: P5Instance): void {
+export function mouseDragged(p: P5Instance): void {
   if (!compassArc) return;
   
   if (compassArc.getState() === 'DRAWING') {
@@ -71,7 +71,7 @@ function mouseDragged(p: P5Instance): void {
   }
 }
 
-function mouseReleased(): void {
+export function mouseReleased(): void {
   if (!compassArc) return;
   
   if (compassArc.getState() === 'DRAWING') {
@@ -79,6 +79,10 @@ function mouseReleased(): void {
       compassArc.reset();
     }
   }
+}
+
+export function getCompassArc() {
+  return compassArc;
 }
 
 export function createSketch(): void {
