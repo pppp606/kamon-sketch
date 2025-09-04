@@ -26,7 +26,7 @@ export default {
       displayName: 'node',
       preset: 'ts-jest/presets/default-esm',
       extensionsToTreatAsEsm: ['.ts'],
-      testMatch: ['<rootDir>/test/index.test.ts', '<rootDir>/test/compassArc.test.ts'],
+      testMatch: ['<rootDir>/test/index.test.ts', '<rootDir>/test/compassArc.test.ts', '<rootDir>/test/line.test.ts'],
       collectCoverageFrom: [
         'src/**/*.ts',
         '!src/**/*.d.ts',
