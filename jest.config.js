@@ -47,7 +47,7 @@ export default {
       displayName: 'jsdom',
       preset: 'ts-jest/presets/default-esm',
       extensionsToTreatAsEsm: ['.ts'],
-      testMatch: ['<rootDir>/test/draw.test.ts'],
+      testMatch: ['<rootDir>/test/draw.test.ts', '<rootDir>/test/compassArc.test.ts'],
       collectCoverageFrom: [
         'src/**/*.ts',
         '!src/**/*.d.ts',

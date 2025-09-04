@@ -43,26 +43,11 @@ describe('p5.js Drawing Tests', () => {
     expect(p.background).toHaveBeenCalledWith(220);
   });
 
-  test('should draw line with correct parameters', () => {
+  test('should clear canvas and set background', () => {
     draw(p);
     
     expect(p.clear).toHaveBeenCalled();
     expect(p.background).toHaveBeenCalledWith(220);
-    
-    // Verify line drawing
-    expect(p.stroke).toHaveBeenCalledWith(255, 0, 0);
-    expect(p.strokeWeight).toHaveBeenCalledWith(2);
-    expect(p.line).toHaveBeenCalledWith(50, 50, 350, 350);
-  });
-
-  test('should draw circle with correct parameters', () => {
-    draw(p);
-    
-    // Verify circle drawing
-    expect(p.fill).toHaveBeenCalledWith(0, 255, 0);
-    expect(p.stroke).toHaveBeenCalledWith(0);
-    expect(p.strokeWeight).toHaveBeenCalledWith(1);
-    expect(p.ellipse).toHaveBeenCalledWith(200, 200, 100, 100);
   });
 
   test('should clear canvas before drawing', () => {
