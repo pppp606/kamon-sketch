@@ -1,4 +1,4 @@
-// @ts-ignore - avoiding p5 type issues for now
+// @ts-expect-error - avoiding p5 type issues for now
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const p5 = require('p5');
 import { CompassArc } from './compassArc';
