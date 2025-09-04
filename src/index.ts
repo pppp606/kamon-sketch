@@ -24,6 +24,7 @@ type P5Instance = {
   mousePressed?: () => void;
   mouseDragged?: () => void;
   mouseReleased?: () => void;
+  doubleClicked?: () => void;
   setup?: () => void;
   draw?: () => void;
 };
@@ -189,6 +190,53 @@ export function getSelection() {
   return selection;
 }
 
+export function doubleClicked(p: P5Instance): void {
+  const selectedElement = selection.getSelectedElement()
+  
+  if (!selectedElement) {
+    return
+  }
+
+  const clickPoint = { x: p.mouseX, y: p.mouseY }
+  const closestPoint = selection.getClosestPointOnElement(clickPoint, selectedElement)
+  
+  if (!closestPoint) {
+    return
+  }
+
+  // Start new drawing from the closest point on the selected element
+  if (drawingMode === 'line') {
+    // Clear any current line and start new one from the closest point
+    currentLine = new Line()
+    currentLine.setFirstPoint(closestPoint.x, closestPoint.y)
+  } else if (drawingMode === 'compass') {
+    // For compass mode, start new arc with center at the closest point
+    compassArc.reset()
+    compassArc.setCenter(closestPoint.x, closestPoint.y)
+  }
+  
+  // Clear selection after starting new drawing
+  selection.setSelectedElement(null)
+}
+
+export function startDrawingFromSelectedElement(): boolean {
+  const selectedElement = selection.getSelectedElement()
+  
+  if (!selectedElement) {
+    return false
+  }
+
+  // For line mode, start a new line from the closest point on the selected element
+  if (drawingMode === 'line') {
+    // Clear any current line
+    currentLine = null
+    return true
+  }
+  
+  // For compass mode, we would implement arc-to-arc continuation here
+  return false
+}
+
 export function createSketch(): void {
   new p5((p: P5Instance) => {
     p.setup = () => setup(p);
@@ -196,6 +244,7 @@ export function createSketch(): void {
     p.mousePressed = () => mousePressed(p);
     p.mouseDragged = () => mouseDragged(p);
     p.mouseReleased = () => mouseReleased();
+    p.doubleClicked = () => doubleClicked(p);
   });
 }
 

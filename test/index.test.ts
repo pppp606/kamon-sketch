@@ -6,6 +6,7 @@ import {
   mousePressed, 
   mouseDragged, 
   mouseReleased, 
+  doubleClicked,
   getCompassArc,
   setDrawingMode,
   getDrawingMode,
@@ -524,6 +525,122 @@ describe('p5.js integration', () => {
       const selectedElement = selection.getSelectedElement();
       expect(selectedElement).not.toBeNull();
       expect(selectedElement?.type).toBe('arc');
+    });
+  });
+
+  describe('drawing from selected elements', () => {
+    beforeEach(() => {
+      setup(p);
+      setDrawingMode('line');
+    });
+
+    test('should start new line from selected line on double click', () => {
+      // Create a line first
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+
+      // Select the line
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).not.toBeNull();
+
+      // Double click to start drawing from selected element
+      p.mouseX = 150;
+      p.mouseY = 105;
+      doubleClicked(p);
+
+      // Should clear selection and start new line from closest point
+      expect(selection.getSelectedElement()).toBeNull();
+      
+      const currentLine = getCurrentLine();
+      expect(currentLine).not.toBeNull();
+      expect(currentLine?.getFirstPoint()?.x).toBeCloseTo(150, 1);
+      expect(currentLine?.getFirstPoint()?.y).toBeCloseTo(100, 1); // Projected onto line
+    });
+
+    test('should start new compass arc from selected line on double click', () => {
+      setDrawingMode('line');
+      
+      // Create a line first
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+
+      // Select the line
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+
+      // Switch to compass mode
+      setDrawingMode('compass');
+
+      // Double click to start drawing from selected element
+      p.mouseX = 150;
+      p.mouseY = 105;
+      doubleClicked(p);
+
+      const arc = getCompassArc();
+      expect(arc?.getState()).toBe('CENTER_SET');
+      expect(arc?.getCenterPoint()?.x).toBeCloseTo(150, 1);
+      expect(arc?.getCenterPoint()?.y).toBeCloseTo(100, 1);
+    });
+
+    test('should not start drawing if no element is selected', () => {
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).toBeNull();
+
+      const linesBefore = getLines().length;
+      const currentLineBefore = getCurrentLine();
+
+      // Double click with no selection
+      p.mouseX = 100;
+      p.mouseY = 100;
+      doubleClicked(p);
+
+      // Nothing should change
+      expect(getLines().length).toBe(linesBefore);
+      expect(getCurrentLine()).toBe(currentLineBefore);
+    });
+
+    test('should start drawing from closest point when double clicking in line mode', () => {
+      setDrawingMode('line');
+
+      // Create a line first
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+
+      // Select the line
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).not.toBeNull();
+
+      // Double click to start new line from selected element's closest point
+      p.mouseX = 160; // Slightly different position
+      p.mouseY = 110;
+      doubleClicked(p);
+
+      // Should start new line from the closest point on the selected line
+      const currentLine = getCurrentLine();
+      expect(currentLine).not.toBeNull();
+      expect(currentLine?.getFirstPoint()?.x).toBeCloseTo(160, 1);
+      expect(currentLine?.getFirstPoint()?.y).toBeCloseTo(100, 1); // Projected to line y=100
     });
   });
 });

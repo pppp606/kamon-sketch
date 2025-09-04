@@ -97,9 +97,54 @@ export class Selection {
 
     const radius = arc.getRadius()
     const distanceFromCenter = this.calculateDistance(point, centerPoint)
+    
+    // For full circles or RADIUS_SET state, just use circle distance
+    if (arc.getState() === 'RADIUS_SET' || arc.isFullCircle()) {
+      return Math.abs(distanceFromCenter - radius)
+    }
 
-    // Distance from point to the arc circle boundary
-    return Math.abs(distanceFromCenter - radius)
+    // For partial arcs, check if point is within the arc's angle range
+    const pointAngle = this.normalizeAngle(Math.atan2(point.y - centerPoint.y, point.x - centerPoint.x))
+    const startAngle = this.normalizeAngle(arc.getStartAngle())
+    const endAngle = this.normalizeAngle(arc.getEndAngle())
+    
+    if (this.isAngleInRange(pointAngle, startAngle, endAngle)) {
+      // Point is within arc range, return distance to circle
+      return Math.abs(distanceFromCenter - radius)
+    } else {
+      // Point is outside arc range, return distance to nearest arc endpoint
+      const startPointX = centerPoint.x + radius * Math.cos(startAngle)
+      const startPointY = centerPoint.y + radius * Math.sin(startAngle)
+      const endPointX = centerPoint.x + radius * Math.cos(endAngle)
+      const endPointY = centerPoint.y + radius * Math.sin(endAngle)
+      
+      const distToStart = this.calculateDistance(point, { x: startPointX, y: startPointY })
+      const distToEnd = this.calculateDistance(point, { x: endPointX, y: endPointY })
+      
+      return Math.min(distToStart, distToEnd)
+    }
+  }
+
+  private normalizeAngle(angle: number): number {
+    // Normalize angle to (-π, π]
+    while (angle <= -Math.PI) {
+      angle += 2 * Math.PI
+    }
+    while (angle > Math.PI) {
+      angle -= 2 * Math.PI
+    }
+    return angle
+  }
+
+  private isAngleInRange(angle: number, startAngle: number, endAngle: number): boolean {
+    // Handle case where arc crosses the -π/π boundary
+    if (startAngle <= endAngle) {
+      // Normal case: arc doesn't cross boundary
+      return angle >= startAngle && angle <= endAngle
+    } else {
+      // Arc crosses boundary: angle is in range if it's >= start OR <= end
+      return angle >= startAngle || angle <= endAngle
+    }
   }
 
   findClosestElement(point: Point, elements: SelectableElement[]): SelectableElement | null {
@@ -128,6 +173,116 @@ export class Selection {
     }
 
     return closestElement
+  }
+
+  getClosestPointOnElement(point: Point, element: SelectableElement): Point | null {
+    if (element.type === 'line') {
+      return this.getClosestPointOnLine(point, element.element)
+    } else if (element.type === 'arc') {
+      return this.getClosestPointOnArc(point, element.element)
+    }
+    return null
+  }
+
+  private getClosestPointOnLine(point: Point, line: Line): Point | null {
+    const firstPoint = line.getFirstPoint()
+    const secondPoint = line.getSecondPoint()
+    
+    if (!firstPoint || !secondPoint) {
+      return null
+    }
+
+    // Vector from first to second point (line segment vector)
+    const segmentVector = {
+      x: secondPoint.x - firstPoint.x,
+      y: secondPoint.y - firstPoint.y
+    }
+
+    // Vector from first point to test point
+    const pointVector = {
+      x: point.x - firstPoint.x,
+      y: point.y - firstPoint.y
+    }
+
+    const segmentLengthSquared = segmentVector.x * segmentVector.x + segmentVector.y * segmentVector.y
+    
+    if (segmentLengthSquared === 0) {
+      // Line segment is actually a point
+      return firstPoint
+    }
+
+    // Project point vector onto segment vector
+    const projectionParameter = (pointVector.x * segmentVector.x + pointVector.y * segmentVector.y) / segmentLengthSquared
+    
+    // Clamp projection parameter to [0, 1] to stay within line segment
+    const clampedParameter = Math.max(0, Math.min(1, projectionParameter))
+    
+    // Find closest point on line segment
+    return {
+      x: firstPoint.x + clampedParameter * segmentVector.x,
+      y: firstPoint.y + clampedParameter * segmentVector.y
+    }
+  }
+
+  private getClosestPointOnArc(point: Point, arc: CompassArc): Point | null {
+    const centerPoint = arc.getCenterPoint()
+    
+    if (!centerPoint || (arc.getState() !== 'DRAWING' && arc.getState() !== 'RADIUS_SET')) {
+      return null
+    }
+
+    const radius = arc.getRadius()
+    const dx = point.x - centerPoint.x
+    const dy = point.y - centerPoint.y
+    const distanceFromCenter = Math.sqrt(dx * dx + dy * dy)
+
+    if (distanceFromCenter === 0) {
+      // Point is at center, return any point on the circle
+      return { x: centerPoint.x + radius, y: centerPoint.y }
+    }
+
+    const pointAngle = this.normalizeAngle(Math.atan2(dy, dx))
+
+    // For full circles or RADIUS_SET state, just project onto circle
+    if (arc.getState() === 'RADIUS_SET' || arc.isFullCircle()) {
+      const normalizedX = dx / distanceFromCenter
+      const normalizedY = dy / distanceFromCenter
+      
+      return {
+        x: centerPoint.x + normalizedX * radius,
+        y: centerPoint.y + normalizedY * radius
+      }
+    }
+
+    // For partial arcs, find closest point considering angle range
+    const startAngle = this.normalizeAngle(arc.getStartAngle())
+    const endAngle = this.normalizeAngle(arc.getEndAngle())
+    
+    if (this.isAngleInRange(pointAngle, startAngle, endAngle)) {
+      // Point angle is within arc range, project onto circle
+      const normalizedX = dx / distanceFromCenter
+      const normalizedY = dy / distanceFromCenter
+      
+      return {
+        x: centerPoint.x + normalizedX * radius,
+        y: centerPoint.y + normalizedY * radius
+      }
+    } else {
+      // Point angle is outside arc range, return closest arc endpoint
+      const startPointX = centerPoint.x + radius * Math.cos(startAngle)
+      const startPointY = centerPoint.y + radius * Math.sin(startAngle)
+      const endPointX = centerPoint.x + radius * Math.cos(endAngle)
+      const endPointY = centerPoint.y + radius * Math.sin(endAngle)
+      
+      const distToStart = this.calculateDistance(point, { x: startPointX, y: startPointY })
+      const distToEnd = this.calculateDistance(point, { x: endPointX, y: endPointY })
+      
+      if (distToStart <= distToEnd) {
+        return { x: startPointX, y: startPointY }
+      } else {
+        return { x: endPointX, y: endPointY }
+      }
+    }
   }
 
   drawHighlight(
