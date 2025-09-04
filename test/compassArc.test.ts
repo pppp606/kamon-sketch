@@ -265,7 +265,12 @@ describe('CompassArc', () => {
       compassArc.setCenter(100, 100)
       compassArc.setRadius(150, 100)
       compassArc.startDrawing()
+      
+      compassArc.updateDrawing(100, 150)
+      compassArc.updateDrawing(50, 100)
+      compassArc.updateDrawing(100, 50)
       compassArc.updateDrawing(149, 99)
+      
       compassArc.draw(p as any)
       
       expect(p.circle).toHaveBeenCalledWith(100, 100, 100)
@@ -278,6 +283,216 @@ describe('CompassArc', () => {
       expect(p.line).not.toHaveBeenCalled()
       expect(p.circle).not.toHaveBeenCalled()
       expect(p.arc).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('error handling', () => {
+    beforeEach(() => {
+      compassArc = new CompassArc()
+    })
+
+    it('should throw error when setting radius before center', () => {
+      expect(() => compassArc.setRadius(100, 200)).toThrow('Center point must be set before setting radius')
+    })
+
+    it('should throw error when starting drawing before radius is set', () => {
+      expect(() => compassArc.startDrawing()).toThrow('Radius must be set before drawing')
+      
+      compassArc.setCenter(100, 100)
+      expect(() => compassArc.startDrawing()).toThrow('Radius must be set before drawing')
+    })
+
+    it('should throw error when updating drawing before starting', () => {
+      expect(() => compassArc.updateDrawing(100, 200)).toThrow('Must start drawing before updating')
+      
+      compassArc.setCenter(100, 100)
+      expect(() => compassArc.updateDrawing(100, 200)).toThrow('Must start drawing before updating')
+      
+      compassArc.setRadius(150, 100)
+      expect(() => compassArc.updateDrawing(100, 200)).toThrow('Must start drawing before updating')
+    })
+  })
+
+  describe('edge cases', () => {
+    beforeEach(() => {
+      compassArc = new CompassArc()
+    })
+
+    it('should handle zero radius (center equals radius point)', () => {
+      compassArc.setCenter(100, 100)
+      compassArc.setRadius(100, 100)
+      expect(compassArc.getRadius()).toBe(0)
+    })
+
+    it('should handle very small radius', () => {
+      compassArc.setCenter(100, 100)
+      compassArc.setRadius(100.001, 100)
+      expect(compassArc.getRadius()).toBeCloseTo(0.001, 5)
+    })
+
+    it('should handle negative coordinates', () => {
+      compassArc.setCenter(-100, -100)
+      compassArc.setRadius(-103, -104)
+      expect(compassArc.getRadius()).toBe(5)
+    })
+  })
+
+  describe('angle boundary crossing', () => {
+    beforeEach(() => {
+      compassArc = new CompassArc()
+      compassArc.setCenter(0, 0)
+    })
+
+    it('should handle clockwise crossing from -π to π', () => {
+      compassArc.setRadius(-50, 0)
+      compassArc.startDrawing()
+      
+      compassArc.updateDrawing(-35.36, -35.36)
+      let angle = compassArc.getTotalAngle()
+      expect(angle).toBeCloseTo(Math.PI / 4, 5)
+      
+      compassArc.updateDrawing(0, -50)
+      angle = compassArc.getTotalAngle()
+      expect(angle).toBeCloseTo(Math.PI / 2, 5)
+      
+      compassArc.updateDrawing(35.36, -35.36)
+      angle = compassArc.getTotalAngle()
+      expect(angle).toBeCloseTo(3 * Math.PI / 4, 5)
+      
+      compassArc.updateDrawing(50, 0)
+      angle = compassArc.getTotalAngle()
+      expect(angle).toBeCloseTo(Math.PI, 5)
+    })
+
+    it('should handle counter-clockwise crossing from π to -π', () => {
+      compassArc.setRadius(50, 0)
+      compassArc.startDrawing()
+      
+      compassArc.updateDrawing(35.36, 35.36)
+      let angle = compassArc.getTotalAngle()
+      expect(angle).toBeCloseTo(Math.PI / 4, 5)
+      
+      compassArc.updateDrawing(0, 50)
+      angle = compassArc.getTotalAngle()
+      expect(angle).toBeCloseTo(Math.PI / 2, 5)
+      
+      compassArc.updateDrawing(-35.36, 35.36)
+      angle = compassArc.getTotalAngle()
+      expect(angle).toBeCloseTo(3 * Math.PI / 4, 5)
+      
+      compassArc.updateDrawing(-50, 0)
+      angle = compassArc.getTotalAngle()
+      expect(angle).toBeCloseTo(Math.PI, 5)
+    })
+  })
+
+  describe('multi-rotation', () => {
+    beforeEach(() => {
+      compassArc = new CompassArc()
+      compassArc.setCenter(0, 0)
+      compassArc.setRadius(50, 0)
+      compassArc.startDrawing()
+    })
+
+    it('should accumulate angles beyond 2π', () => {
+      compassArc.updateDrawing(0, 50)
+      expect(compassArc.getTotalAngle()).toBeCloseTo(Math.PI / 2, 5)
+      
+      compassArc.updateDrawing(-50, 0)
+      expect(compassArc.getTotalAngle()).toBeCloseTo(Math.PI, 5)
+      
+      compassArc.updateDrawing(0, -50)
+      expect(compassArc.getTotalAngle()).toBeCloseTo(3 * Math.PI / 2, 5)
+      
+      compassArc.updateDrawing(49, -1)
+      expect(compassArc.getTotalAngle()).toBeCloseTo(2 * Math.PI, 1)
+      
+      compassArc.updateDrawing(0, 50)
+      expect(compassArc.getTotalAngle()).toBeCloseTo(2 * Math.PI + Math.PI / 2, 2)
+    })
+  })
+
+  describe('full circle threshold', () => {
+    const FULL_CIRCLE_EPS = 0.1
+
+    beforeEach(() => {
+      compassArc = new CompassArc()
+      compassArc.setCenter(0, 0)
+      compassArc.setRadius(50, 0)
+      compassArc.startDrawing()
+    })
+
+    it('should not detect full circle just below threshold', () => {
+      const angleJustBelow = 2 * Math.PI - FULL_CIRCLE_EPS - 0.01
+      const x = 50 * Math.cos(angleJustBelow)
+      const y = 50 * Math.sin(angleJustBelow)
+      compassArc.updateDrawing(x, y)
+      expect(compassArc.isFullCircle()).toBe(false)
+    })
+
+    it('should detect full circle just above threshold', () => {
+      compassArc.updateDrawing(0, 50)
+      compassArc.updateDrawing(-50, 0)
+      compassArc.updateDrawing(0, -50)
+      compassArc.updateDrawing(49, 1)
+      expect(compassArc.isFullCircle()).toBe(true)
+    })
+  })
+
+  describe('p5.js drawing consistency', () => {
+    let p: P5Instance
+
+    beforeEach(() => {
+      p = {
+        push: jest.fn(),
+        pop: jest.fn(),
+        noFill: jest.fn(),
+        stroke: jest.fn(),
+        strokeWeight: jest.fn(),
+        point: jest.fn(),
+        line: jest.fn(),
+        circle: jest.fn(),
+        arc: jest.fn(),
+      }
+      compassArc = new CompassArc()
+    })
+
+    it('should maintain push/pop consistency', () => {
+      compassArc.setCenter(100, 100)
+      compassArc.draw(p as any)
+      
+      expect(p.push).toHaveBeenCalledTimes(1)
+      expect(p.pop).toHaveBeenCalledTimes(1)
+    })
+
+    it('should maintain push/pop consistency for states with center point', () => {
+      const states = [
+        () => compassArc.setCenter(100, 100),
+        () => { compassArc.setCenter(100, 100); compassArc.setRadius(150, 100) },
+        () => { 
+          compassArc.setCenter(100, 100)
+          compassArc.setRadius(150, 100)
+          compassArc.startDrawing()
+          compassArc.updateDrawing(150, 150)
+        }
+      ]
+
+      states.forEach((setupState) => {
+        jest.clearAllMocks()
+        compassArc = new CompassArc()
+        setupState()
+        compassArc.draw(p as any)
+        
+        expect(p.push).toHaveBeenCalledTimes(1)
+        expect(p.pop).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    it('should not call push/pop when no center is set', () => {
+      compassArc.draw(p as any)
+      
+      expect(p.push).not.toHaveBeenCalled()
+      expect(p.pop).not.toHaveBeenCalled()
     })
   })
 })

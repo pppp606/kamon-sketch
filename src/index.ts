@@ -1,8 +1,7 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+// @ts-ignore - avoiding p5 type issues for now
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const p5 = require('p5');
-import { CompassArc } from './compassArc.js';
+import { CompassArc } from './compassArc';
 
 type P5Instance = {
   createCanvas: (width: number, height: number) => void;

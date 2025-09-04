@@ -1,6 +1,9 @@
 export type Point = { x: number; y: number }
 export type ArcState = 'IDLE' | 'CENTER_SET' | 'RADIUS_SET' | 'DRAWING'
 
+const FULL_CIRCLE_EPS = 0.1
+const MIN_RADIUS = 0.001
+
 interface P5DrawingContext {
   push(): void;
   pop(): void;
@@ -18,6 +21,8 @@ export class CompassArc {
   private radiusPoint: Point | null = null
   private currentPoint: Point | null = null
   private state: ArcState = 'IDLE'
+  private lastAngle: number | null = null
+  private accumulatedAngle = 0
 
   getCenterPoint(): Point | null {
     return this.centerPoint
@@ -36,6 +41,7 @@ export class CompassArc {
     this.radiusPoint = null
     this.currentPoint = null
     this.state = 'CENTER_SET'
+    this.resetAngleTracking()
   }
 
   setRadius(x: number, y: number): void {
@@ -51,6 +57,7 @@ export class CompassArc {
       throw new Error('Radius must be set before drawing')
     }
     this.state = 'DRAWING'
+    this.resetAngleTracking()
   }
 
   updateDrawing(x: number, y: number): void {
@@ -58,6 +65,7 @@ export class CompassArc {
       throw new Error('Must start drawing before updating')
     }
     this.currentPoint = { x, y }
+    this.accumulateAngle()
   }
 
   getRadius(): number {
@@ -91,20 +99,7 @@ export class CompassArc {
   }
 
   getTotalAngle(): number {
-    if (this.state !== 'DRAWING' || !this.centerPoint || !this.radiusPoint || !this.currentPoint) {
-      return 0
-    }
-    
-    const startAngle = this.getStartAngle()
-    const endAngle = this.getEndAngle()
-    
-    let totalAngle = endAngle - startAngle
-    
-    if (totalAngle < 0) {
-      totalAngle += 2 * Math.PI
-    }
-    
-    return totalAngle
+    return this.accumulatedAngle
   }
 
   isFullCircle(): boolean {
@@ -113,9 +108,8 @@ export class CompassArc {
     }
     
     const totalAngle = this.getTotalAngle()
-    const threshold = 0.1
     
-    return Math.abs(totalAngle - 2 * Math.PI) < threshold
+    return Math.abs(totalAngle - 2 * Math.PI) < FULL_CIRCLE_EPS
   }
 
   draw(p: P5DrawingContext): void {
@@ -152,5 +146,45 @@ export class CompassArc {
     this.radiusPoint = null
     this.currentPoint = null
     this.state = 'IDLE'
+    this.resetAngleTracking()
+  }
+
+  private resetAngleTracking(): void {
+    this.lastAngle = null
+    this.accumulatedAngle = 0
+  }
+
+  private accumulateAngle(): void {
+    if (!this.centerPoint || !this.currentPoint || !this.radiusPoint) {
+      return
+    }
+
+    const currentAngle = this.calculateAngle(this.currentPoint)
+    const startAngle = this.calculateAngle(this.radiusPoint)
+    
+    if (this.lastAngle === null) {
+      this.lastAngle = startAngle
+      this.accumulatedAngle = 0
+    }
+
+    let delta = currentAngle - this.lastAngle
+
+    while (delta <= -Math.PI) {
+      delta += 2 * Math.PI
+    }
+    while (delta > Math.PI) {
+      delta -= 2 * Math.PI
+    }
+
+    this.accumulatedAngle += Math.abs(delta)
+    this.lastAngle = currentAngle
+  }
+
+  static getFullCircleThreshold(): number {
+    return FULL_CIRCLE_EPS
+  }
+
+  static getMinRadius(): number {
+    return MIN_RADIUS
   }
 }
