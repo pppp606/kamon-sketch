@@ -34,6 +34,11 @@ describe('Fill', () => {
       fillInstance = new Fill()
       expect(fillInstance.getFillColor()).toEqual({ r: 0, g: 0, b: 0 })
     })
+
+    it('should initialize with default color tolerance', () => {
+      fillInstance = new Fill()
+      expect(fillInstance.getColorTolerance()).toBe(10)
+    })
   })
 
   describe('fill color management', () => {
@@ -56,6 +61,19 @@ describe('Fill', () => {
     it('should clamp RGB values to valid range', () => {
       fillInstance.setFillColor({ r: -10, g: 300, b: 128 })
       expect(fillInstance.getFillColor()).toEqual({ r: 0, g: 255, b: 128 })
+    })
+
+    it('should set and get color tolerance', () => {
+      fillInstance.setColorTolerance(20)
+      expect(fillInstance.getColorTolerance()).toBe(20)
+    })
+
+    it('should clamp color tolerance to valid range', () => {
+      fillInstance.setColorTolerance(-10)
+      expect(fillInstance.getColorTolerance()).toBe(0)
+      
+      fillInstance.setColorTolerance(300)
+      expect(fillInstance.getColorTolerance()).toBe(255)
     })
   })
 
@@ -199,41 +217,75 @@ describe('Fill', () => {
       const startX = 200
       const startY = 200
       
-      fillInstance.floodFill(p as any, startX, startY)
+      // Mock pixels array for direct access
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
+      // Fill with white
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255
+        p.pixels[i + 1] = 255
+        p.pixels[i + 2] = 255
+        p.pixels[i + 3] = 255
+      }
+      
+      const result = fillInstance.floodFill(p as any, startX, startY)
       
       expect(p.loadPixels).toHaveBeenCalled()
       expect(p.updatePixels).toHaveBeenCalled()
+      expect(result.pixelCount).toBeGreaterThan(0)
     })
 
     it('should not fill if starting point is already filled with target color', () => {
-      // Mock get to return black (already filled)
-      p.get.mockReturnValue([0, 0, 0, 255])
+      // Mock pixels array with black (already filled)
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
+      // Fill with black
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 0
+        p.pixels[i + 1] = 0
+        p.pixels[i + 2] = 0
+        p.pixels[i + 3] = 255
+      }
       
       fillInstance.setFillColor({ r: 0, g: 0, b: 0 })
-      fillInstance.floodFill(p as any, 200, 200)
+      const result = fillInstance.floodFill(p as any, 200, 200)
       
+      // Should return 0 pixels filled
+      expect(result.pixelCount).toBe(0)
       // Should not call updatePixels if no changes needed
       expect(p.updatePixels).not.toHaveBeenCalled()
     })
 
     it('should fill connected regions only', () => {
-      // This test will verify that flood fill respects boundaries
-      // We'll mock the pixel checking to simulate a bounded region
-      let callCount = 0
-      p.get.mockImplementation((x: number, y: number) => {
-        callCount++
-        // Return white for fillable area, black for boundaries
-        if (x < 150 || x > 250 || y < 150 || y > 250) {
-          return [0, 0, 0, 255] // Black boundary
-        }
-        return [255, 255, 255, 255] // White fillable area
-      })
+      // Create a pixels array with a bounded region
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
       
-      fillInstance.floodFill(p as any, 200, 200)
+      // Fill entire canvas with white first
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255      // R
+        p.pixels[i + 1] = 255  // G  
+        p.pixels[i + 2] = 255  // B
+        p.pixels[i + 3] = 255  // A
+      }
+      
+      // Create black boundary from (150,150) to (250,250)
+      for (let y = 150; y <= 250; y++) {
+        for (let x = 150; x <= 250; x++) {
+          // Only boundary pixels, not interior
+          if (x === 150 || x === 250 || y === 150 || y === 250) {
+            const index = 4 * (y * 400 + x)
+            p.pixels[index] = 0      // R
+            p.pixels[index + 1] = 0  // G
+            p.pixels[index + 2] = 0  // B
+            p.pixels[index + 3] = 255 // A
+          }
+        }
+      }
+      
+      const result = fillInstance.floodFill(p as any, 200, 200)
       
       expect(p.loadPixels).toHaveBeenCalled()
       expect(p.updatePixels).toHaveBeenCalled()
-      expect(callCount).toBeGreaterThan(0)
+      expect(result.pixelCount).toBeGreaterThan(0)
+      expect(result.boundingBox).toBeDefined()
     })
   })
 
@@ -268,10 +320,21 @@ describe('Fill', () => {
       const mouseX = 200
       const mouseY = 150
       
-      fillInstance.handleClick(p as any, mouseX, mouseY)
+      // Mock pixels array
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
+      // Fill with white
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255
+        p.pixels[i + 1] = 255
+        p.pixels[i + 2] = 255
+        p.pixels[i + 3] = 255
+      }
+      
+      const result = fillInstance.handleClick(p as any, mouseX, mouseY)
       
       // Should trigger flood fill operation
       expect(p.loadPixels).toHaveBeenCalled()
+      expect(result.pixelCount).toBeGreaterThan(0)
     })
 
     it('should validate click coordinates are within canvas bounds', () => {
@@ -283,6 +346,16 @@ describe('Fill', () => {
     })
 
     it('should provide visual feedback during fill operation', () => {
+      // Mock pixels array
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
+      // Fill with white
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255
+        p.pixels[i + 1] = 255
+        p.pixels[i + 2] = 255
+        p.pixels[i + 3] = 255
+      }
+      
       fillInstance.handleClick(p as any, 200, 200)
       
       // Should indicate that a fill operation occurred
@@ -318,42 +391,80 @@ describe('Fill', () => {
     })
 
     it('should work with existing line boundaries', () => {
-      // Mock scenario where lines create boundaries
-      p.get.mockImplementation((x: number, y: number) => {
-        // Simulate vertical line at x=200 from y=100 to y=300
-        if (x === 200 && y >= 100 && y <= 300) {
-          return [0, 0, 0, 255] // Black line
-        }
-        return [255, 255, 255, 255] // White background
-      })
+      // Create pixels array with vertical line boundary
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
+      
+      // Fill with white background
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255
+        p.pixels[i + 1] = 255
+        p.pixels[i + 2] = 255
+        p.pixels[i + 3] = 255
+      }
+      
+      // Draw vertical line at x=200 from y=100 to y=300
+      for (let y = 100; y <= 300; y++) {
+        const index = 4 * (y * 400 + 200)
+        p.pixels[index] = 0      // R (black)
+        p.pixels[index + 1] = 0  // G
+        p.pixels[index + 2] = 0  // B
+        p.pixels[index + 3] = 255 // A
+      }
       
       // Fill on left side of line
-      fillInstance.handleClick(p as any, 150, 200)
+      const result = fillInstance.handleClick(p as any, 150, 200)
       expect(p.loadPixels).toHaveBeenCalled()
+      expect(result.pixelCount).toBeGreaterThan(0)
     })
 
     it('should work with existing arc boundaries', () => {
-      // Mock scenario where arcs create boundaries
-      p.get.mockImplementation((x: number, y: number) => {
-        // Simulate circular boundary at (200,200) with radius 50
-        const dx = x - 200
-        const dy = y - 200
-        const distance = Math.sqrt(dx * dx + dy * dy)
-        
-        if (Math.abs(distance - 50) < 2) {
-          return [0, 0, 0, 255] // Black arc boundary
+      // Create pixels array with circular boundary
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
+      
+      // Fill with white background
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255
+        p.pixels[i + 1] = 255
+        p.pixels[i + 2] = 255
+        p.pixels[i + 3] = 255
+      }
+      
+      // Draw circular boundary at (200,200) with radius 50
+      for (let y = 0; y < 400; y++) {
+        for (let x = 0; x < 400; x++) {
+          const dx = x - 200
+          const dy = y - 200
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          
+          if (Math.abs(distance - 50) < 2) {
+            const index = 4 * (y * 400 + x)
+            p.pixels[index] = 0      // R (black)
+            p.pixels[index + 1] = 0  // G
+            p.pixels[index + 2] = 0  // B
+            p.pixels[index + 3] = 255 // A
+          }
         }
-        return [255, 255, 255, 255] // White background
-      })
+      }
       
       // Fill inside the circle
-      fillInstance.handleClick(p as any, 200, 200)
+      const result = fillInstance.handleClick(p as any, 200, 200)
       expect(p.loadPixels).toHaveBeenCalled()
+      expect(result.pixelCount).toBeGreaterThan(0)
     })
 
     it('should maintain drawing state consistency', () => {
       // Ensure fill operations don't interfere with other drawing states
       const initialState = fillInstance.getFillColor()
+      
+      // Mock pixels array
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
+      // Fill with white
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255
+        p.pixels[i + 1] = 255
+        p.pixels[i + 2] = 255
+        p.pixels[i + 3] = 255
+      }
       
       fillInstance.handleClick(p as any, 200, 200)
       
@@ -390,16 +501,27 @@ describe('Fill', () => {
     })
 
     it('should handle very small regions efficiently', () => {
-      // Mock a single pixel region
-      p.get.mockImplementation((x: number, y: number) => {
-        if (x === 200 && y === 200) {
-          return [255, 255, 255, 255] // Single white pixel
-        }
-        return [0, 0, 0, 255] // Black everywhere else
-      })
+      // Create pixels array with single fillable pixel
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
       
-      fillInstance.handleClick(p as any, 200, 200)
+      // Fill with black background
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 0
+        p.pixels[i + 1] = 0
+        p.pixels[i + 2] = 0
+        p.pixels[i + 3] = 255
+      }
+      
+      // Make single pixel white at (200,200)
+      const singlePixelIndex = 4 * (200 * 400 + 200)
+      p.pixels[singlePixelIndex] = 255
+      p.pixels[singlePixelIndex + 1] = 255
+      p.pixels[singlePixelIndex + 2] = 255
+      p.pixels[singlePixelIndex + 3] = 255
+      
+      const result = fillInstance.handleClick(p as any, 200, 200)
       expect(p.loadPixels).toHaveBeenCalled()
+      expect(result.pixelCount).toBe(1) // Should fill exactly one pixel
     })
 
     it('should prevent infinite loops on degenerate cases', () => {
@@ -410,11 +532,22 @@ describe('Fill', () => {
     })
 
     it('should handle canvas boundary conditions', () => {
-      // Test filling at canvas edges
-      fillInstance.handleClick(p as any, 0, 0)
-      expect(p.loadPixels).toHaveBeenCalled()
+      // Create pixels array with fillable white background
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4)
+      // Fill with white
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255
+        p.pixels[i + 1] = 255
+        p.pixels[i + 2] = 255
+        p.pixels[i + 3] = 255
+      }
       
-      fillInstance.handleClick(p as any, 399, 399)
+      // Test filling at canvas edges
+      const result1 = fillInstance.handleClick(p as any, 0, 0)
+      expect(p.loadPixels).toHaveBeenCalled()
+      expect(result1.pixelCount).toBeGreaterThan(0)
+      
+      const result2 = fillInstance.handleClick(p as any, 399, 399)
       expect(p.loadPixels).toHaveBeenCalledTimes(2)
     })
   })

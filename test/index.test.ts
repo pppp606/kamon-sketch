@@ -693,6 +693,16 @@ describe('p5.js integration', () => {
       p.mouseX = 200;
       p.mouseY = 200;
       
+      // Add pixels array to mock for fill operation
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4);
+      // Fill with white
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255;
+        p.pixels[i + 1] = 255;
+        p.pixels[i + 2] = 255;
+        p.pixels[i + 3] = 255;
+      }
+      
       mousePressed(p);
       
       // Should trigger fill operation
@@ -723,6 +733,16 @@ describe('p5.js integration', () => {
       
       const blueColor = { r: 0, g: 0, b: 255 };
       setFillColor(blueColor);
+      
+      // Add pixels array to mock for fill operation
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4);
+      // Fill with white
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255;
+        p.pixels[i + 1] = 255;
+        p.pixels[i + 2] = 255;
+        p.pixels[i + 3] = 255;
+      }
       
       p.mouseX = 150;
       p.mouseY = 150;
