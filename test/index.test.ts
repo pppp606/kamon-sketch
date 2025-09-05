@@ -12,7 +12,10 @@ import {
   getDrawingMode,
   getLines,
   getCurrentLine,
-  getSelection
+  getSelection,
+  getFill,
+  setFillColor,
+  getFillColor
 } from '../src/index';
 
 interface P5Instance {
@@ -37,6 +40,13 @@ interface P5Instance {
   mouseReleased?: jest.Mock;
   setup?: jest.Mock;
   draw?: jest.Mock;
+  width?: number;
+  height?: number;
+  pixels?: Uint8ClampedArray;
+  loadPixels?: jest.Mock;
+  updatePixels?: jest.Mock;
+  get?: jest.Mock;
+  set?: jest.Mock;
 }
 
 describe('Hello World', () => {
@@ -641,6 +651,140 @@ describe('p5.js integration', () => {
       expect(currentLine).not.toBeNull();
       expect(currentLine?.getFirstPoint()?.x).toBeCloseTo(160, 1);
       expect(currentLine?.getFirstPoint()?.y).toBeCloseTo(100, 1); // Projected to line y=100
+    });
+  });
+
+  describe('fill mode integration', () => {
+    beforeEach(() => {
+      setup(p);
+      // Add fill-specific p5 properties
+      p.width = 400;
+      p.height = 400;
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4);
+      p.loadPixels = jest.fn();
+      p.updatePixels = jest.fn();
+      p.get = jest.fn().mockReturnValue([255, 255, 255, 255]); // Default white
+      p.set = jest.fn();
+    });
+
+    test('should initialize fill system during setup', () => {
+      setup(p);
+      const fillInstance = getFill();
+      expect(fillInstance).toBeDefined();
+      expect(getFillColor()).toEqual({ r: 0, g: 0, b: 0 }); // Default black
+    });
+
+    test('should switch to fill drawing mode', () => {
+      expect(getDrawingMode()).toBe('line');
+      
+      setDrawingMode('fill');
+      expect(getDrawingMode()).toBe('fill');
+    });
+
+    test('should set and get fill color', () => {
+      const redColor = { r: 255, g: 0, b: 0 };
+      setFillColor(redColor);
+      expect(getFillColor()).toEqual(redColor);
+    });
+
+    test('should handle mouse clicks in fill mode', () => {
+      setDrawingMode('fill');
+      
+      p.mouseX = 200;
+      p.mouseY = 200;
+      
+      // Add pixels array to mock for fill operation
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4);
+      // Fill with white
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255;
+        p.pixels[i + 1] = 255;
+        p.pixels[i + 2] = 255;
+        p.pixels[i + 3] = 255;
+      }
+      
+      mousePressed(p);
+      
+      // Should trigger fill operation
+      expect(p.loadPixels).toHaveBeenCalled();
+      
+      const fillInstance = getFill();
+      expect(fillInstance.getLastFillLocation()).toEqual({ x: 200, y: 200 });
+    });
+
+    test('should not trigger other drawing modes when in fill mode', () => {
+      setDrawingMode('fill');
+      
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      // Should not create lines
+      expect(getLines()).toHaveLength(0);
+      expect(getCurrentLine()).toBeNull();
+      
+      // Should not affect compass arc
+      const arc = getCompassArc();
+      expect(arc?.getState()).toBe('IDLE');
+    });
+
+    test('should work with custom fill colors', () => {
+      setDrawingMode('fill');
+      
+      const blueColor = { r: 0, g: 0, b: 255 };
+      setFillColor(blueColor);
+      
+      // Add pixels array to mock for fill operation
+      p.pixels = new Uint8ClampedArray(400 * 400 * 4);
+      // Fill with white
+      for (let i = 0; i < p.pixels.length; i += 4) {
+        p.pixels[i] = 255;
+        p.pixels[i + 1] = 255;
+        p.pixels[i + 2] = 255;
+        p.pixels[i + 3] = 255;
+      }
+      
+      p.mouseX = 150;
+      p.mouseY = 150;
+      mousePressed(p);
+      
+      expect(getFillColor()).toEqual(blueColor);
+      expect(p.loadPixels).toHaveBeenCalled();
+    });
+
+    test('should handle boundary cases in fill mode', () => {
+      setDrawingMode('fill');
+      
+      // Click outside canvas bounds
+      p.mouseX = -10;
+      p.mouseY = 200;
+      mousePressed(p);
+      
+      // Should not crash or cause errors
+      expect(() => mousePressed(p)).not.toThrow();
+      
+      // Click at edge of canvas
+      p.mouseX = 399;
+      p.mouseY = 399;
+      mousePressed(p);
+      
+      expect(() => mousePressed(p)).not.toThrow();
+    });
+
+    test('should reset drawing state when switching to fill mode', () => {
+      // Start with line mode and create a line
+      setDrawingMode('line');
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      expect(getCurrentLine()).not.toBeNull();
+      
+      // Switch to fill mode
+      setDrawingMode('fill');
+      
+      // Current line should be cleared
+      expect(getCurrentLine()).toBeNull();
     });
   });
 });
