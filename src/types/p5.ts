@@ -21,8 +21,10 @@ export interface P5Instance {
   mouseDragged?: () => void
   mouseReleased?: () => void
   doubleClicked?: () => void
+  keyPressed?: () => void
   setup?: () => void
   draw?: () => void
+  key: string
   width: number
   height: number
   pixels: Uint8ClampedArray
