@@ -4,7 +4,8 @@ import {
   divideTwoPoints, 
   divideLineSegment,
   divideRadiusPoints,
-  DivisionPoint 
+  DivisionPoint,
+  DivisionIntegrationHelper
 } from '../src/division'
 
 describe('Point Division Calculations', () => {
@@ -432,5 +433,121 @@ describe('Division UI/Interaction System', () => {
       const closest3 = divisionMode.getClosestDivisionPoint(mousePoint3, 1.0)
       expect(closest3).toBeNull()
     })
+  })
+})
+
+describe('Division Integration Helper', () => {
+  let helper: DivisionIntegrationHelper
+
+  beforeEach(() => {
+    helper = new DivisionIntegrationHelper()
+  })
+
+  it('should initialize with inactive division mode', () => {
+    const status = helper.getDivisionStatus()
+    expect(status.isActive).toBe(false)
+    expect(status.selectedElementType).toBeUndefined()
+    expect(status.divisions).toBeUndefined()
+    expect(status.pointCount).toBe(0) // Empty array has length 0, not undefined
+  })
+
+  it('should activate quick division for line element', () => {
+    const line = new Line()
+    line.setFirstPoint(0, 0)
+    line.setSecondPoint(10, 0)
+    const element = { type: 'line' as const, element: line }
+
+    const result = helper.activateQuickDivision(element, 3)
+
+    expect(result.success).toBe(true)
+    expect(result.error).toBeUndefined()
+
+    const status = helper.getDivisionStatus()
+    expect(status.isActive).toBe(true)
+    expect(status.selectedElementType).toBe('line')
+    expect(status.divisions).toBe(3)
+    expect(status.pointCount).toBe(2)
+  })
+
+  it('should handle activation error for null element', () => {
+    const result = helper.activateQuickDivision(null, 2)
+
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('No element selected')
+  })
+
+  it('should handle mouse interaction for division point selection', () => {
+    const line = new Line()
+    line.setFirstPoint(0, 0)
+    line.setSecondPoint(20, 0)
+    const element = { type: 'line' as const, element: line }
+
+    helper.activateQuickDivision(element, 4) // Points at 5, 10, 15
+
+    let selectedPoint: DivisionPoint | null = null
+    const handleSelection = (point: DivisionPoint) => {
+      selectedPoint = point
+    }
+
+    // Test close mouse position
+    const mousePoint = { x: 9.8, y: 0.3 }
+    const handled = helper.handleMouseInteraction(mousePoint, handleSelection)
+
+    expect(handled).toBe(true)
+    expect(selectedPoint).toEqual({ x: 10, y: 0 })
+  })
+
+  it('should not handle mouse interaction when inactive', () => {
+    const mousePoint = { x: 5, y: 0 }
+    const handleSelection = jest.fn()
+
+    const handled = helper.handleMouseInteraction(mousePoint, handleSelection)
+
+    expect(handled).toBe(false)
+    expect(handleSelection).not.toHaveBeenCalled()
+  })
+
+  it('should cycle through common divisions', () => {
+    const line = new Line()
+    line.setFirstPoint(0, 0)
+    line.setSecondPoint(12, 0)
+    const element = { type: 'line' as const, element: line }
+
+    helper.activateQuickDivision(element, 2)
+    
+    expect(helper.getDivisionStatus().divisions).toBe(2)
+    
+    helper.cycleDivisions()
+    expect(helper.getDivisionStatus().divisions).toBe(3)
+    
+    helper.cycleDivisions()
+    expect(helper.getDivisionStatus().divisions).toBe(4)
+    
+    helper.cycleDivisions()
+    expect(helper.getDivisionStatus().divisions).toBe(5)
+    
+    helper.cycleDivisions() // Should cycle back to 2
+    expect(helper.getDivisionStatus().divisions).toBe(2)
+  })
+
+  it('should not cycle divisions when inactive', () => {
+    expect(helper.getDivisionStatus().isActive).toBe(false)
+    
+    helper.cycleDivisions() // Should be no-op
+    
+    expect(helper.getDivisionStatus().isActive).toBe(false)
+  })
+
+  it('should deactivate properly', () => {
+    const line = new Line()
+    line.setFirstPoint(0, 0)
+    line.setSecondPoint(6, 0)
+    const element = { type: 'line' as const, element: line }
+
+    helper.activateQuickDivision(element, 3)
+    expect(helper.getDivisionStatus().isActive).toBe(true)
+
+    helper.deactivate()
+    expect(helper.getDivisionStatus().isActive).toBe(false)
   })
 })

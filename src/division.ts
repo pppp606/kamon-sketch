@@ -9,6 +9,12 @@ export interface DivisionPoint {
   y: number
 }
 
+export interface Color {
+  r: number;
+  g: number;
+  b: number;
+}
+
 interface P5DrawingContext {
   push(): void;
   pop(): void;
@@ -18,6 +24,22 @@ interface P5DrawingContext {
   strokeWeight(weight: number): void;
   ellipse(x: number, y: number, w: number, h?: number): void;
 }
+
+// Constants for rendering precision and optimization
+const RENDER_CONSTANTS = {
+  // Floating point precision tolerance for coordinate comparisons
+  COORDINATE_EPSILON: 0.01,
+  
+  // Default sizes and thresholds
+  DEFAULT_DIVISION_POINT_SIZE: 6,
+  DEFAULT_DIVISION_POINT_THRESHOLD: 15,
+  
+  // Colors
+  COLORS: {
+    BLACK: { r: 0, g: 0, b: 0 } as Color,
+    DIVISION_POINT_DEFAULT: { r: 0, g: 0, b: 255 } as Color,
+  }
+} as const
 
 /**
  * Divides a line segment between two points into equal parts
@@ -183,21 +205,22 @@ export class DivisionMode {
    * @param threshold - Maximum distance threshold for selection
    * @returns Closest division point within threshold, or null if none found
    */
-  getClosestDivisionPoint(mousePoint: Point, threshold: number): DivisionPoint | null {
+  getClosestDivisionPoint(mousePoint: Point, threshold: number = RENDER_CONSTANTS.DEFAULT_DIVISION_POINT_THRESHOLD): DivisionPoint | null {
     if (!this.active || this.divisionPoints.length === 0) {
       return null
     }
 
     let closestPoint: DivisionPoint | null = null
-    let closestDistance = Infinity
+    let closestDistanceSquared = Infinity
+    const thresholdSquared = threshold * threshold // Avoid sqrt by comparing squared distances
 
     for (const divisionPoint of this.divisionPoints) {
       const dx = mousePoint.x - divisionPoint.x
       const dy = mousePoint.y - divisionPoint.y
-      const distance = Math.sqrt(dx * dx + dy * dy)
+      const distanceSquared = dx * dx + dy * dy
 
-      if (distance <= threshold && distance < closestDistance) {
-        closestDistance = distance
+      if (distanceSquared <= thresholdSquared && distanceSquared < closestDistanceSquared) {
+        closestDistanceSquared = distanceSquared
         closestPoint = divisionPoint
       }
     }
@@ -211,7 +234,11 @@ export class DivisionMode {
    * @param color - Color for division point indicators (default: blue)
    * @param size - Size of division point markers (default: 6)
    */
-  draw(p: P5DrawingContext, color = { r: 0, g: 0, b: 255 }, size = 6): void {
+  draw(
+    p: P5DrawingContext, 
+    color: Color = RENDER_CONSTANTS.COLORS.DIVISION_POINT_DEFAULT, 
+    size: number = RENDER_CONSTANTS.DEFAULT_DIVISION_POINT_SIZE
+  ): void {
     if (!this.active || this.divisionPoints.length === 0) {
       return
     }
@@ -219,11 +246,15 @@ export class DivisionMode {
     p.push()
     p.fill(color.r, color.g, color.b)
     p.strokeWeight(1)
-    p.stroke(0) // Black outline for visibility
+    p.stroke(RENDER_CONSTANTS.COLORS.BLACK.r, RENDER_CONSTANTS.COLORS.BLACK.g, RENDER_CONSTANTS.COLORS.BLACK.b)
 
     for (const point of this.divisionPoints) {
+      // Use coordinate epsilon for precise rendering
+      const renderX = Math.round(point.x / RENDER_CONSTANTS.COORDINATE_EPSILON) * RENDER_CONSTANTS.COORDINATE_EPSILON
+      const renderY = Math.round(point.y / RENDER_CONSTANTS.COORDINATE_EPSILON) * RENDER_CONSTANTS.COORDINATE_EPSILON
+      
       // Draw small circles at each division point
-      p.ellipse(point.x, point.y, size, size)
+      p.ellipse(renderX, renderY, size, size)
     }
 
     p.pop()
@@ -247,5 +278,110 @@ export class DivisionMode {
       const unknownType = this.selectedElement as { type: string }
       throw new Error(`Unsupported element type for division: ${unknownType.type}`)
     }
+  }
+}
+
+/**
+ * Integration helper for selection-to-division workflow
+ * Provides convenient methods for common division operations
+ */
+export class DivisionIntegrationHelper {
+  private divisionMode: DivisionMode
+  
+  constructor() {
+    this.divisionMode = new DivisionMode()
+  }
+
+  /**
+   * Get the division mode instance
+   */
+  getDivisionMode(): DivisionMode {
+    return this.divisionMode
+  }
+
+  /**
+   * Quick activation of division mode for a selected element with common division counts
+   * @param element - Selected line or arc element
+   * @param divisions - Number of divisions (2, 3, 4, 5, or custom)
+   * @returns Success status and any error message
+   */
+  activateQuickDivision(element: SelectableElement | null, divisions: 2 | 3 | 4 | 5 | number): { success: boolean; error?: string } {
+    if (!element) {
+      return { success: false, error: 'No element selected' }
+    }
+
+    try {
+      this.divisionMode.activate(element, divisions)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  /**
+   * Handle mouse interaction for division point selection
+   * @param mousePoint - Current mouse position
+   * @param onDivisionPointSelected - Callback when a division point is selected
+   * @param threshold - Distance threshold for selection
+   */
+  handleMouseInteraction(
+    mousePoint: Point, 
+    onDivisionPointSelected: (point: DivisionPoint) => void,
+    threshold?: number
+  ): boolean {
+    if (!this.divisionMode.isActive()) {
+      return false
+    }
+
+    const closestPoint = this.divisionMode.getClosestDivisionPoint(mousePoint, threshold)
+    if (closestPoint) {
+      onDivisionPointSelected(closestPoint)
+      return true
+    }
+
+    return false
+  }
+
+  /**
+   * Get division status information for UI display
+   */
+  getDivisionStatus(): {
+    isActive: boolean;
+    selectedElementType?: 'line' | 'arc';
+    divisions?: number;
+    pointCount?: number;
+  } {
+    const selectedElement = this.divisionMode.getSelectedElement()
+    
+    return {
+      isActive: this.divisionMode.isActive(),
+      selectedElementType: selectedElement?.type,
+      divisions: this.divisionMode.isActive() ? this.divisionMode.getDivisions() : undefined,
+      pointCount: this.divisionMode.getDivisionPoints().length
+    }
+  }
+
+  /**
+   * Cycle through common division counts (2, 3, 4, 5) for keyboard shortcuts
+   */
+  cycleDivisions(): void {
+    if (!this.divisionMode.isActive()) {
+      return
+    }
+
+    const current = this.divisionMode.getDivisions()
+    const commonDivisions: number[] = [2, 3, 4, 5]
+    const currentIndex = commonDivisions.indexOf(current)
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % commonDivisions.length
+    const nextDivisions = commonDivisions[nextIndex]! // Non-null assertion - array bounds are guaranteed
+    
+    this.divisionMode.setDivisions(nextDivisions)
+  }
+
+  /**
+   * Deactivate division mode and clear state
+   */
+  deactivate(): void {
+    this.divisionMode.deactivate()
   }
 }
