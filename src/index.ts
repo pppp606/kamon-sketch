@@ -114,6 +114,7 @@ export function mousePressed(p: P5Instance): void {
   // Selection logic (only when not in middle of compass arc creation)
   const selectableElements: SelectableElement[] = [
     ...lines.map(line => ({ type: 'line' as const, element: line })),
+    ...completedArcs.map(arc => ({ type: 'arc' as const, element: arc })),
     ...(compassArc && (compassArc.getState() === 'DRAWING' || compassArc.getState() === 'RADIUS_SET') ? [{ type: 'arc' as const, element: compassArc }] : [])
   ];
   
@@ -173,10 +174,19 @@ export function mouseDragged(p: P5Instance): void {
 export function mouseReleased(): void {
   if (drawingMode === 'compass' && compassArc) {
     if (compassArc.getState() === 'DRAWING') {
-      // Create a complete copy of the current arc and add to completed arcs
-      const completedArc = new CompassArc();
-      completedArc.copyFrom(compassArc);
-      completedArcs.push(completedArc);
+      // Filter out arcs with minimum radius or angle
+      const MIN_RADIUS = 5; // Minimum radius for visual clarity
+      const MIN_ANGLE = 0.05; // Minimum angle in radians (~3 degrees)
+      
+      const radius = compassArc.getRadius();
+      const totalAngle = Math.abs(compassArc.getTotalAngle());
+      
+      if (radius >= MIN_RADIUS && totalAngle >= MIN_ANGLE) {
+        // Create a complete copy of the current arc and add to completed arcs
+        const completedArc = new CompassArc();
+        completedArc.copyFrom(compassArc);
+        completedArcs.push(completedArc);
+      }
       compassArc.reset();
     }
   }

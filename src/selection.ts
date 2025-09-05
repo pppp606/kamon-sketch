@@ -91,7 +91,12 @@ export class Selection {
   calculateDistanceToArc(point: Point, arc: CompassArc): number {
     const centerPoint = arc.getCenterPoint()
     
-    if (!centerPoint || (arc.getState() !== 'DRAWING' && arc.getState() !== 'RADIUS_SET')) {
+    if (!centerPoint) {
+      return Infinity
+    }
+    
+    // Allow selection of completed arcs (state IDLE) and current arcs
+    if (arc.getState() !== 'DRAWING' && arc.getState() !== 'RADIUS_SET' && arc.getState() !== 'IDLE') {
       return Infinity
     }
 
@@ -103,16 +108,17 @@ export class Selection {
       return Math.abs(distanceFromCenter - radius)
     }
 
-    // For partial arcs, check if point is within the arc's angle range
-    const pointAngle = this.normalizeAngle(Math.atan2(point.y - centerPoint.y, point.x - centerPoint.x))
-    const startAngle = this.normalizeAngle(arc.getStartAngle())
-    const endAngle = this.normalizeAngle(arc.getEndAngle())
+    // For partial arcs, check if point is within the arc's angle range using accumulated angle
+    const pointAngle = Math.atan2(point.y - centerPoint.y, point.x - centerPoint.x)
+    const startAngle = arc.getStartAngle()
+    const totalAngle = arc.getTotalAngle()
     
-    if (this.isAngleInRange(pointAngle, startAngle, endAngle)) {
+    if (this.isPointInAccumulatedArcRange(pointAngle, startAngle, totalAngle)) {
       // Point is within arc range, return distance to circle
       return Math.abs(distanceFromCenter - radius)
     } else {
       // Point is outside arc range, return distance to nearest arc endpoint
+      const endAngle = startAngle + totalAngle
       const startPointX = centerPoint.x + radius * Math.cos(startAngle)
       const startPointY = centerPoint.y + radius * Math.sin(startAngle)
       const endPointX = centerPoint.x + radius * Math.cos(endAngle)
@@ -144,6 +150,29 @@ export class Selection {
     } else {
       // Arc crosses boundary: angle is in range if it's >= start OR <= end
       return angle >= startAngle || angle <= endAngle
+    }
+  }
+
+  private isPointInAccumulatedArcRange(pointAngle: number, startAngle: number, totalAngle: number): boolean {
+    if (Math.abs(totalAngle) >= 2 * Math.PI - 0.1) {
+      // Nearly full circle or more
+      return true
+    }
+
+    // Calculate the angular difference from start to point
+    let angleDiff = pointAngle - startAngle
+    
+    // Normalize the difference to handle boundary crossings
+    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI
+    while (angleDiff <= -Math.PI) angleDiff += 2 * Math.PI
+    
+    // Check if the point is within the arc range considering direction
+    if (totalAngle >= 0) {
+      // Counter-clockwise arc
+      return angleDiff >= 0 && angleDiff <= totalAngle
+    } else {
+      // Clockwise arc
+      return angleDiff <= 0 && angleDiff >= totalAngle
     }
   }
 
@@ -227,7 +256,12 @@ export class Selection {
   private getClosestPointOnArc(point: Point, arc: CompassArc): Point | null {
     const centerPoint = arc.getCenterPoint()
     
-    if (!centerPoint || (arc.getState() !== 'DRAWING' && arc.getState() !== 'RADIUS_SET')) {
+    if (!centerPoint) {
+      return null
+    }
+    
+    // Allow selection of completed arcs (state IDLE) and current arcs
+    if (arc.getState() !== 'DRAWING' && arc.getState() !== 'RADIUS_SET' && arc.getState() !== 'IDLE') {
       return null
     }
 
@@ -241,7 +275,7 @@ export class Selection {
       return { x: centerPoint.x + radius, y: centerPoint.y }
     }
 
-    const pointAngle = this.normalizeAngle(Math.atan2(dy, dx))
+    const pointAngle = Math.atan2(dy, dx)
 
     // For full circles or RADIUS_SET state, just project onto circle
     if (arc.getState() === 'RADIUS_SET' || arc.isFullCircle()) {
@@ -254,11 +288,11 @@ export class Selection {
       }
     }
 
-    // For partial arcs, find closest point considering angle range
-    const startAngle = this.normalizeAngle(arc.getStartAngle())
-    const endAngle = this.normalizeAngle(arc.getEndAngle())
+    // For partial arcs, find closest point considering accumulated angle range
+    const startAngle = arc.getStartAngle()
+    const totalAngle = arc.getTotalAngle()
     
-    if (this.isAngleInRange(pointAngle, startAngle, endAngle)) {
+    if (this.isPointInAccumulatedArcRange(pointAngle, startAngle, totalAngle)) {
       // Point angle is within arc range, project onto circle
       const normalizedX = dx / distanceFromCenter
       const normalizedY = dy / distanceFromCenter
@@ -269,6 +303,7 @@ export class Selection {
       }
     } else {
       // Point angle is outside arc range, return closest arc endpoint
+      const endAngle = startAngle + totalAngle
       const startPointX = centerPoint.x + radius * Math.cos(startAngle)
       const startPointY = centerPoint.y + radius * Math.sin(startAngle)
       const endPointX = centerPoint.x + radius * Math.cos(endAngle)
@@ -320,7 +355,12 @@ export class Selection {
   private drawArcHighlight(p: P5DrawingContext, arc: CompassArc): void {
     const centerPoint = arc.getCenterPoint()
     
-    if (!centerPoint || (arc.getState() !== 'DRAWING' && arc.getState() !== 'RADIUS_SET')) {
+    if (!centerPoint) {
+      return
+    }
+    
+    // Allow highlighting completed arcs (state IDLE) and current arcs
+    if (arc.getState() !== 'DRAWING' && arc.getState() !== 'RADIUS_SET' && arc.getState() !== 'IDLE') {
       return
     }
 
@@ -329,14 +369,28 @@ export class Selection {
     if (arc.getState() === 'RADIUS_SET') {
       // Just highlight the circle for radius set state
       p.circle(centerPoint.x, centerPoint.y, radius * 2)
-    } else if (arc.getState() === 'DRAWING') {
+    } else if (arc.getState() === 'DRAWING' || arc.getState() === 'IDLE') {
       const startAngle = arc.getStartAngle()
-      const endAngle = arc.getEndAngle()
+      const totalAngle = arc.getTotalAngle()
       
       if (arc.isFullCircle()) {
         p.circle(centerPoint.x, centerPoint.y, radius * 2)
       } else {
-        p.arc(centerPoint.x, centerPoint.y, radius * 2, radius * 2, startAngle, endAngle)
+        // Use the same segmentation logic as in the drawing for >180° arcs
+        const endAngle = startAngle + totalAngle
+        if (Math.abs(totalAngle) > Math.PI) {
+          // Split into segments for p5.js arc() limitations
+          const segments = Math.ceil(Math.abs(totalAngle) / Math.PI)
+          const segmentAngle = totalAngle / segments
+          
+          for (let i = 0; i < segments; i++) {
+            const segStart = startAngle + i * segmentAngle
+            const segEnd = startAngle + (i + 1) * segmentAngle
+            p.arc(centerPoint.x, centerPoint.y, radius * 2, radius * 2, segStart, segEnd)
+          }
+        } else {
+          p.arc(centerPoint.x, centerPoint.y, radius * 2, radius * 2, startAngle, endAngle)
+        }
       }
     }
   }
