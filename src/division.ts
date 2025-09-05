@@ -9,6 +9,16 @@ export interface DivisionPoint {
   y: number
 }
 
+interface P5DrawingContext {
+  push(): void;
+  pop(): void;
+  noFill(): void;
+  fill(r: number, g?: number, b?: number): void;
+  stroke(r: number, g?: number, b?: number): void;
+  strokeWeight(weight: number): void;
+  ellipse(x: number, y: number, w: number, h?: number): void;
+}
+
 /**
  * Divides a line segment between two points into equal parts
  * @param pointA - Starting point of the line segment
@@ -193,6 +203,30 @@ export class DivisionMode {
     }
 
     return closestPoint
+  }
+
+  /**
+   * Draw division points on the canvas
+   * @param p - p5.js drawing context
+   * @param color - Color for division point indicators (default: blue)
+   * @param size - Size of division point markers (default: 6)
+   */
+  draw(p: P5DrawingContext, color = { r: 0, g: 0, b: 255 }, size = 6): void {
+    if (!this.active || this.divisionPoints.length === 0) {
+      return
+    }
+
+    p.push()
+    p.fill(color.r, color.g, color.b)
+    p.strokeWeight(1)
+    p.stroke(0) // Black outline for visibility
+
+    for (const point of this.divisionPoints) {
+      // Draw small circles at each division point
+      p.ellipse(point.x, point.y, size, size)
+    }
+
+    p.pop()
   }
 
   /**
