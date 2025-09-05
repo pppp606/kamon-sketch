@@ -4,17 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kamon Sketch - p5.js Drawing</title>
-    <script type="importmap">
-    {
-      "imports": {
-        "p5": "https://cdn.jsdelivr.net/npm/p5@2.0.5/+esm"
-      }
-    }
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.7.0/lib/p5.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        #canvas-container {
+            display: inline-block;
+            border: 2px solid #333;
+            background: white;
+        }
+        .controls {
+            margin-bottom: 10px;
+        }
+        button {
+            margin-right: 10px;
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.active {
+            background-color: #2196F3;
+        }
+    </style>
 </head>
 <body>
     <h1>Kamon Sketch - Drawing Environment</h1>
+    <div class="controls">
+        <button onclick="switchMode('line')" id="lineBtn" class="active">Line Mode</button>
+        <button onclick="switchMode('compass')" id="compassBtn">Compass Mode</button>
+        <button onclick="switchMode('fill')" id="fillBtn">Fill Mode</button>
+    </div>
     <div id="canvas-container"></div>
     <script type="module" src="dist/index.js"></script>
+    <script>
+        function switchMode(mode) {
+            if (typeof window.setDrawingMode === 'function') {
+                window.setDrawingMode(mode);
+                
+                // Update button states
+                document.querySelectorAll('button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                if (mode === 'line') {
+                    document.getElementById('lineBtn').classList.add('active');
+                } else if (mode === 'compass') {
+                    document.getElementById('compassBtn').classList.add('active');
+                } else if (mode === 'fill') {
+                    document.getElementById('fillBtn').classList.add('active');
+                }
+                
+                console.log('Switched to ' + mode + ' mode');
+            } else {
+                console.error('setDrawingMode function not available yet');
+            }
+        }
+    </script>
 </body>
 </html>

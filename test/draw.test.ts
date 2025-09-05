@@ -48,7 +48,7 @@ describe('p5.js Drawing Tests', () => {
 
   test('should create canvas with correct dimensions', () => {
     setup(p);
-    expect(p.createCanvas).toHaveBeenCalledWith(400, 400);
+    expect(p.createCanvas).toHaveBeenCalledWith(800, 800);
     expect(p.background).toHaveBeenCalledWith(220);
   });
 
@@ -101,11 +101,21 @@ describe('p5.js Drawing Tests', () => {
   });
 
   test('should create p5.js sketch instance', () => {
+    // Mock p5 globally for this test
+    (global as any).p5 = jest.fn((sketch: any, container: string) => {
+      expect(container).toBe('canvas-container');
+      return {};
+    });
+    
     // Test that the function exists and is callable
     expect(typeof createSketch).toBe('function');
     
     // Should not throw errors when called
     expect(() => createSketch()).not.toThrow();
+    expect((global as any).p5).toHaveBeenCalled();
+    
+    // Cleanup
+    delete (global as any).p5;
   });
 });
 

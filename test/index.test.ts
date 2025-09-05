@@ -87,7 +87,7 @@ describe('p5.js integration', () => {
   test('setup should initialize canvas and CompassArc', () => {
     setup(p);
     
-    expect(p.createCanvas).toHaveBeenCalledWith(400, 400);
+    expect(p.createCanvas).toHaveBeenCalledWith(800, 800);
     expect(p.background).toHaveBeenCalledWith(220);
   });
 
@@ -100,8 +100,18 @@ describe('p5.js integration', () => {
   });
 
   test('createSketch should set up p5 instance with handlers', () => {
+    // Mock p5 globally for this test
+    (global as any).p5 = jest.fn((sketch: any, container: string) => {
+      expect(container).toBe('canvas-container');
+      return {};
+    });
+    
     expect(createSketch).toBeDefined();
     expect(() => createSketch()).not.toThrow();
+    expect((global as any).p5).toHaveBeenCalled();
+    
+    // Cleanup
+    delete (global as any).p5;
   });
 
   describe('line drawing mode', () => {
@@ -280,7 +290,7 @@ describe('p5.js integration', () => {
       expect(arc?.getState()).toBe('RADIUS_SET');
     });
 
-    test('should start drawing on third mouse press', () => {
+    test('should start drawing on drag from RADIUS_SET state', () => {
       p.mouseX = 100;
       p.mouseY = 150;
       mousePressed(p);
@@ -291,7 +301,7 @@ describe('p5.js integration', () => {
       
       p.mouseX = 200;
       p.mouseY = 200;
-      mousePressed(p);
+      mouseDragged(p);
       
       const arc = getCompassArc();
       expect(arc?.getState()).toBe('DRAWING');
@@ -329,7 +339,7 @@ describe('p5.js integration', () => {
       
       p.mouseX = 200;
       p.mouseY = 200;
-      mousePressed(p);
+      mouseDragged(p);
       
       const arc = getCompassArc();
       if (arc) {

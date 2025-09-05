@@ -1,5 +1,13 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const p5 = require('p5');
+declare const p5: {
+  new (sketch: (p: P5Instance) => void, element?: string | HTMLElement): unknown;
+};
+
+declare global {
+  interface Window {
+    setDrawingMode: typeof setDrawingMode;
+    getDrawingMode: typeof getDrawingMode;
+  }
+}
 import { CompassArc } from './compassArc';
 import { Line } from './line';
 import { Selection, SelectableElement } from './selection';
@@ -7,6 +15,7 @@ import { Fill } from './fill';
 import { P5Instance } from './types/p5';
 
 let compassArc: CompassArc;
+let completedArcs: CompassArc[] = []; // Store completed arcs
 let lines: Line[] = [];
 let currentLine: Line | null = null;
 let drawingMode: 'compass' | 'line' | 'fill' = 'line'; // Default to line mode for MVP
@@ -39,9 +48,10 @@ export function getCurrentLine(): Line | null {
 }
 
 export function setup(p: P5Instance): void {
-  p.createCanvas(400, 400);
+  p.createCanvas(800, 800);
   p.background(220);
   compassArc = new CompassArc();
+  completedArcs = [];
   lines = [];
   currentLine = null;
   selection = new Selection();
@@ -55,6 +65,11 @@ export function draw(p: P5Instance): void {
   // Draw all completed lines
   for (const line of lines) {
     line.draw(p);
+  }
+  
+  // Draw all completed arcs
+  for (const arc of completedArcs) {
+    arc.draw(p);
   }
   
   // Draw current line being created
@@ -92,11 +107,6 @@ export function mousePressed(p: P5Instance): void {
       selection.setSelectedElement(null); // Clear selection when setting radius
       compassArc.setRadius(p.mouseX, p.mouseY);
       return;
-    } else if (state === 'RADIUS_SET') {
-      selection.setSelectedElement(null); // Clear selection when starting to draw
-      compassArc.startDrawing();
-      compassArc.updateDrawing(p.mouseX, p.mouseY);
-      return;
     }
     // If state is DRAWING, continue to selection logic
   }
@@ -104,6 +114,7 @@ export function mousePressed(p: P5Instance): void {
   // Selection logic (only when not in middle of compass arc creation)
   const selectableElements: SelectableElement[] = [
     ...lines.map(line => ({ type: 'line' as const, element: line })),
+    ...completedArcs.map(arc => ({ type: 'arc' as const, element: arc })),
     ...(compassArc && (compassArc.getState() === 'DRAWING' || compassArc.getState() === 'RADIUS_SET') ? [{ type: 'arc' as const, element: compassArc }] : [])
   ];
   
@@ -149,7 +160,11 @@ export function mousePressed(p: P5Instance): void {
 
 export function mouseDragged(p: P5Instance): void {
   if (drawingMode === 'compass' && compassArc) {
-    if (compassArc.getState() === 'DRAWING') {
+    if (compassArc.getState() === 'RADIUS_SET') {
+      // Start drawing when dragging begins from RADIUS_SET state
+      compassArc.startDrawing();
+      compassArc.updateDrawing(p.mouseX, p.mouseY);
+    } else if (compassArc.getState() === 'DRAWING') {
       compassArc.updateDrawing(p.mouseX, p.mouseY);
     }
   }
@@ -159,9 +174,20 @@ export function mouseDragged(p: P5Instance): void {
 export function mouseReleased(): void {
   if (drawingMode === 'compass' && compassArc) {
     if (compassArc.getState() === 'DRAWING') {
-      if (compassArc.isFullCircle()) {
-        compassArc.reset();
+      // Filter out arcs with minimum radius or angle
+      const MIN_RADIUS = 5; // Minimum radius for visual clarity
+      const MIN_ANGLE = 0.05; // Minimum angle in radians (~3 degrees)
+      
+      const radius = compassArc.getRadius();
+      const totalAngle = Math.abs(compassArc.getTotalAngle());
+      
+      if (radius >= MIN_RADIUS && totalAngle >= MIN_ANGLE) {
+        // Create a complete copy of the current arc and add to completed arcs
+        const completedArc = new CompassArc();
+        completedArc.copyFrom(compassArc);
+        completedArcs.push(completedArc);
       }
+      compassArc.reset();
     }
   }
   // Line mode doesn't use mouse release events
@@ -244,10 +270,14 @@ export function createSketch(): void {
     p.mouseDragged = () => mouseDragged(p);
     p.mouseReleased = () => mouseReleased();
     p.doubleClicked = () => doubleClicked(p);
-  });
+  }, 'canvas-container');
 }
 
-// Auto-initialize if running in browser
-if (typeof window !== 'undefined') {
+// Auto-initialize if running in browser (but not in test environment)
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
+  // Export functions to global scope for HTML button access
+  window.setDrawingMode = setDrawingMode;
+  window.getDrawingMode = getDrawingMode;
+  
   createSketch();
 }
