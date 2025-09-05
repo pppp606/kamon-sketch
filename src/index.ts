@@ -7,6 +7,7 @@ import { Fill } from './fill';
 import { P5Instance } from './types/p5';
 
 let compassArc: CompassArc;
+let completedArcs: CompassArc[] = []; // Store completed arcs
 let lines: Line[] = [];
 let currentLine: Line | null = null;
 let drawingMode: 'compass' | 'line' | 'fill' = 'line'; // Default to line mode for MVP
@@ -39,9 +40,10 @@ export function getCurrentLine(): Line | null {
 }
 
 export function setup(p: P5Instance): void {
-  p.createCanvas(400, 400);
+  p.createCanvas(800, 800);
   p.background(220);
   compassArc = new CompassArc();
+  completedArcs = [];
   lines = [];
   currentLine = null;
   selection = new Selection();
@@ -55,6 +57,11 @@ export function draw(p: P5Instance): void {
   // Draw all completed lines
   for (const line of lines) {
     line.draw(p);
+  }
+  
+  // Draw all completed arcs
+  for (const arc of completedArcs) {
+    arc.draw(p);
   }
   
   // Draw current line being created
@@ -91,11 +98,6 @@ export function mousePressed(p: P5Instance): void {
     } else if (state === 'CENTER_SET') {
       selection.setSelectedElement(null); // Clear selection when setting radius
       compassArc.setRadius(p.mouseX, p.mouseY);
-      return;
-    } else if (state === 'RADIUS_SET') {
-      selection.setSelectedElement(null); // Clear selection when starting to draw
-      compassArc.startDrawing();
-      compassArc.updateDrawing(p.mouseX, p.mouseY);
       return;
     }
     // If state is DRAWING, continue to selection logic
@@ -149,7 +151,11 @@ export function mousePressed(p: P5Instance): void {
 
 export function mouseDragged(p: P5Instance): void {
   if (drawingMode === 'compass' && compassArc) {
-    if (compassArc.getState() === 'DRAWING') {
+    if (compassArc.getState() === 'RADIUS_SET') {
+      // Start drawing when dragging begins from RADIUS_SET state
+      compassArc.startDrawing();
+      compassArc.updateDrawing(p.mouseX, p.mouseY);
+    } else if (compassArc.getState() === 'DRAWING') {
       compassArc.updateDrawing(p.mouseX, p.mouseY);
     }
   }
@@ -159,9 +165,11 @@ export function mouseDragged(p: P5Instance): void {
 export function mouseReleased(): void {
   if (drawingMode === 'compass' && compassArc) {
     if (compassArc.getState() === 'DRAWING') {
-      if (compassArc.isFullCircle()) {
-        compassArc.reset();
-      }
+      // Create a complete copy of the current arc and add to completed arcs
+      const completedArc = new CompassArc();
+      completedArc.copyFrom(compassArc);
+      completedArcs.push(completedArc);
+      compassArc.reset();
     }
   }
   // Line mode doesn't use mouse release events
