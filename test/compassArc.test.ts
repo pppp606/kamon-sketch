@@ -235,7 +235,7 @@ describe('CompassArc', () => {
       
       expect(p.push).toHaveBeenCalled()
       expect(p.noFill).toHaveBeenCalled()
-      expect(p.stroke).toHaveBeenCalledWith(0)
+      expect(p.stroke).toHaveBeenCalledWith(0, 0, 0)
       expect(p.strokeWeight).toHaveBeenCalledWith(2)
       expect(p.point).toHaveBeenCalledWith(100, 100)
       expect(p.pop).toHaveBeenCalled()

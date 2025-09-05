@@ -146,12 +146,12 @@ describe('Division Point Rendering Tests', () => {
     expect(p.push).toHaveBeenCalled();
     expect(p.fill).toHaveBeenCalledWith(0, 0, 255); // Blue color by default
     expect(p.strokeWeight).toHaveBeenCalledWith(1);
-    expect(p.stroke).toHaveBeenCalledWith(0); // Black outline
+    expect(p.stroke).toHaveBeenCalledWith(0, 0, 0); // Black outline
     
-    // Should draw 2 ellipses at division points (33.33, 0) and (66.67, 0)
+    // Should draw 2 ellipses at division points - coordinates are rounded due to epsilon precision
     expect(p.ellipse).toHaveBeenCalledTimes(2);
-    expect(p.ellipse).toHaveBeenNthCalledWith(1, 100/3, 0, 6, 6); // First division point
-    expect(p.ellipse).toHaveBeenNthCalledWith(2, 200/3, 0, 6, 6); // Second division point
+    expect(p.ellipse).toHaveBeenNthCalledWith(1, 33.33, 0, 6, 6); // First division point (rounded)
+    expect(p.ellipse).toHaveBeenNthCalledWith(2, 66.67, 0, 6, 6); // Second division point (rounded)
     
     expect(p.pop).toHaveBeenCalled();
   });
@@ -173,7 +173,7 @@ describe('Division Point Rendering Tests', () => {
     expect(p.push).toHaveBeenCalled();
     expect(p.fill).toHaveBeenCalledWith(0, 0, 255); // Blue color by default
     expect(p.strokeWeight).toHaveBeenCalledWith(1);
-    expect(p.stroke).toHaveBeenCalledWith(0); // Black outline
+    expect(p.stroke).toHaveBeenCalledWith(0, 0, 0); // Black outline
     
     // Should draw 1 ellipse at midpoint of radius (30, 0)
     expect(p.ellipse).toHaveBeenCalledTimes(1);

@@ -246,7 +246,7 @@ export class DivisionMode {
     p.push()
     p.fill(color.r, color.g, color.b)
     p.strokeWeight(1)
-    p.stroke(RENDER_CONSTANTS.COLORS.BLACK.r, RENDER_CONSTANTS.COLORS.BLACK.g, RENDER_CONSTANTS.COLORS.BLACK.b)
+    p.stroke(0, 0, 0) // Black outline
 
     for (const point of this.divisionPoints) {
       // Use coordinate epsilon for precise rendering

@@ -8,7 +8,7 @@ interface P5DrawingContext {
   push(): void;
   pop(): void;
   noFill(): void;
-  stroke(color: number): void;
+  stroke(r: number, g?: number, b?: number): void;
   strokeWeight(weight: number): void;
   point(x: number, y: number): void;
   line(x1: number, y1: number, x2: number, y2: number): void;
@@ -117,7 +117,7 @@ export class CompassArc {
 
     p.push()
     p.noFill()
-    p.stroke(0)
+    p.stroke(0, 0, 0)
     p.strokeWeight(2)
 
     if (this.state === 'CENTER_SET') {
