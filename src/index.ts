@@ -1,4 +1,13 @@
-declare const p5: any;
+declare const p5: {
+  new (sketch: (p: P5Instance) => void, element?: string | HTMLElement): unknown;
+};
+
+declare global {
+  interface Window {
+    setDrawingMode: typeof setDrawingMode;
+    getDrawingMode: typeof getDrawingMode;
+  }
+}
 import { CompassArc } from './compassArc';
 import { Line } from './line';
 import { Selection, SelectableElement } from './selection';
@@ -257,8 +266,8 @@ export function createSketch(): void {
 // Auto-initialize if running in browser (but not in test environment)
 if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
   // Export functions to global scope for HTML button access
-  (window as any).setDrawingMode = setDrawingMode;
-  (window as any).getDrawingMode = getDrawingMode;
+  window.setDrawingMode = setDrawingMode;
+  window.getDrawingMode = getDrawingMode;
   
   createSketch();
 }
