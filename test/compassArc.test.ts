@@ -241,14 +241,14 @@ describe('CompassArc', () => {
       expect(p.pop).toHaveBeenCalled()
     })
 
-    it('should draw center, radius line, and guide circle when radius is set', () => {
+    it('should draw only center point when radius is set', () => {
       compassArc.setCenter(100, 100)
       compassArc.setRadius(150, 100)
       compassArc.draw(p as any)
       
       expect(p.point).toHaveBeenCalledWith(100, 100)
-      expect(p.line).toHaveBeenCalledWith(100, 100, 150, 100)
-      expect(p.circle).toHaveBeenCalledWith(100, 100, 100)
+      expect(p.line).not.toHaveBeenCalled()
+      expect(p.circle).not.toHaveBeenCalled()
     })
 
     it('should draw arc during drawing state', () => {

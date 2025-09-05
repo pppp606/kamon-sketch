@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const p5 = require('p5');
+declare const p5: any;
 import { CompassArc } from './compassArc';
 import { Line } from './line';
 import { Selection, SelectableElement } from './selection';
@@ -252,10 +251,14 @@ export function createSketch(): void {
     p.mouseDragged = () => mouseDragged(p);
     p.mouseReleased = () => mouseReleased();
     p.doubleClicked = () => doubleClicked(p);
-  });
+  }, 'canvas-container');
 }
 
-// Auto-initialize if running in browser
-if (typeof window !== 'undefined') {
+// Auto-initialize if running in browser (but not in test environment)
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'test') {
+  // Export functions to global scope for HTML button access
+  (window as any).setDrawingMode = setDrawingMode;
+  (window as any).getDrawingMode = getDrawingMode;
+  
   createSketch();
 }

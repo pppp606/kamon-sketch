@@ -143,23 +143,13 @@ export class CompassArc {
       const startAngle = this.getStartAngle()
       const totalAngle = this.getTotalAngle()
       
-      console.log('🎯 Arc Drawing Debug:')
-      console.log('  startAngle:', startAngle * 180 / Math.PI, '度')
-      console.log('  totalAngle:', totalAngle * 180 / Math.PI, '度')
-      console.log('  totalAngle >= 0:', totalAngle >= 0)
       
       if (this.isFullCircle()) {
-        console.log('  → Full circle detected')
         p.circle(this.centerPoint.x, this.centerPoint.y, radius * 2)
       } else {
         // Draw arc based on actual accumulated angle (preserving direction and magnitude)
         const drawStartAngle = startAngle
         const drawEndAngle = startAngle + totalAngle
-        
-        console.log('  totalAngle:', totalAngle * 180 / Math.PI, '度')
-        console.log('  drawStartAngle:', drawStartAngle * 180 / Math.PI, '度')
-        console.log('  drawEndAngle:', drawEndAngle * 180 / Math.PI, '度')
-        console.log('  → Drawing arc from', drawStartAngle * 180 / Math.PI, 'to', drawEndAngle * 180 / Math.PI)
         
         // For p5.js, draw arc following the actual mouse movement direction
         // For arcs > 180°, split into multiple smaller arcs
@@ -183,7 +173,6 @@ export class CompassArc {
             const segmentAngle = Math.min(remainingAngle, maxSegmentAngle)
             const currentEndAngle = currentStartAngle + (segmentAngle * direction)
             
-            console.log('  Drawing segment:', currentStartAngle * 180 / Math.PI, 'to', currentEndAngle * 180 / Math.PI, '(', segmentAngle * 180 / Math.PI, '度)')
             
             if (direction >= 0) {
               p.arc(this.centerPoint.x, this.centerPoint.y, radius * 2, radius * 2, currentStartAngle, currentEndAngle)
@@ -225,15 +214,9 @@ export class CompassArc {
     if (this.lastAngle === null) {
       this.lastAngle = startAngle
       this.accumulatedAngle = 0
-      console.log('📐 Angle accumulation reset, startAngle:', startAngle * 180 / Math.PI, '度')
     }
 
     let delta = currentAngle - this.lastAngle
-
-    console.log('📐 Angle calculation:')
-    console.log('  currentAngle:', currentAngle * 180 / Math.PI, '度')
-    console.log('  lastAngle:', this.lastAngle * 180 / Math.PI, '度')
-    console.log('  raw delta:', delta * 180 / Math.PI, '度')
 
     while (delta <= -Math.PI) {
       delta += 2 * Math.PI
@@ -242,9 +225,7 @@ export class CompassArc {
       delta -= 2 * Math.PI
     }
 
-    console.log('  normalized delta:', delta * 180 / Math.PI, '度')
     this.accumulatedAngle += delta
-    console.log('  accumulatedAngle:', this.accumulatedAngle * 180 / Math.PI, '度')
     this.lastAngle = currentAngle
   }
 
