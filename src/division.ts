@@ -238,17 +238,14 @@ export class DivisionMode {
       return
     }
 
-    try {
-      if (this.selectedElement.type === 'line') {
-        this.divisionPoints = divideLineSegment(this.selectedElement.element, this.divisions)
-      } else if (this.selectedElement.type === 'arc') {
-        this.divisionPoints = divideRadiusPoints(this.selectedElement.element, this.divisions)
-      } else {
-        throw new Error(`Unsupported element type for division: ${this.selectedElement.type}`)
-      }
-    } catch (error) {
-      // Re-throw with more context
-      throw error
+    if (this.selectedElement.type === 'line') {
+      this.divisionPoints = divideLineSegment(this.selectedElement.element, this.divisions)
+    } else if (this.selectedElement.type === 'arc') {
+      this.divisionPoints = divideRadiusPoints(this.selectedElement.element, this.divisions)
+    } else {
+      // This should never happen due to type constraints, but satisfy TypeScript
+      const unknownType = this.selectedElement as { type: string }
+      throw new Error(`Unsupported element type for division: ${unknownType.type}`)
     }
   }
 }
