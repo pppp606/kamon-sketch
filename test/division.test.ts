@@ -306,3 +306,131 @@ describe('CompassArc Radius Division Functionality', () => {
     })
   })
 })
+
+describe('Division UI/Interaction System', () => {
+  describe('DivisionMode', () => {
+    let divisionMode: any
+
+    beforeEach(() => {
+      // Import and create DivisionMode instance
+      const { DivisionMode } = require('../src/division')
+      divisionMode = new DivisionMode()
+    })
+
+    it('should start in inactive state', () => {
+      expect(divisionMode.isActive()).toBe(false)
+      expect(divisionMode.getSelectedElement()).toBeNull()
+      expect(divisionMode.getDivisions()).toBe(2) // Default divisions
+      expect(divisionMode.getDivisionPoints()).toEqual([])
+    })
+
+    it('should activate division mode for selected line', () => {
+      const line = new Line()
+      line.setFirstPoint(0, 0)
+      line.setSecondPoint(4, 0)
+      const element = { type: 'line' as const, element: line }
+
+      divisionMode.activate(element, 3)
+
+      expect(divisionMode.isActive()).toBe(true)
+      expect(divisionMode.getSelectedElement()).toBe(element)
+      expect(divisionMode.getDivisions()).toBe(3)
+      
+      const points = divisionMode.getDivisionPoints()
+      expect(points).toHaveLength(2) // 3 divisions = 2 division points
+      expect(points[0]).toEqual({ x: 4/3, y: 0 })
+      expect(points[1]).toEqual({ x: 8/3, y: 0 })
+    })
+
+    it('should activate division mode for selected arc', () => {
+      const arc = new CompassArc()
+      arc.setCenter(0, 0)
+      arc.setRadius(6, 0)
+      const element = { type: 'arc' as const, element: arc }
+
+      divisionMode.activate(element, 2)
+
+      expect(divisionMode.isActive()).toBe(true)
+      expect(divisionMode.getSelectedElement()).toBe(element)
+      expect(divisionMode.getDivisions()).toBe(2)
+      
+      const points = divisionMode.getDivisionPoints()
+      expect(points).toHaveLength(1) // 2 divisions = 1 division point
+      expect(points[0]).toEqual({ x: 3, y: 0 }) // Midpoint of radius
+    })
+
+    it('should update divisions and recalculate points', () => {
+      const line = new Line()
+      line.setFirstPoint(0, 0)
+      line.setSecondPoint(8, 0)
+      const element = { type: 'line' as const, element: line }
+
+      divisionMode.activate(element, 2)
+      expect(divisionMode.getDivisionPoints()).toHaveLength(1)
+
+      divisionMode.setDivisions(4)
+      expect(divisionMode.getDivisions()).toBe(4)
+      
+      const points = divisionMode.getDivisionPoints()
+      expect(points).toHaveLength(3) // 4 divisions = 3 division points
+      expect(points[0]).toEqual({ x: 2, y: 0 })
+      expect(points[1]).toEqual({ x: 4, y: 0 })
+      expect(points[2]).toEqual({ x: 6, y: 0 })
+    })
+
+    it('should deactivate and clear state', () => {
+      const line = new Line()
+      line.setFirstPoint(0, 0)
+      line.setSecondPoint(4, 0)
+      const element = { type: 'line' as const, element: line }
+
+      divisionMode.activate(element, 3)
+      expect(divisionMode.isActive()).toBe(true)
+
+      divisionMode.deactivate()
+
+      expect(divisionMode.isActive()).toBe(false)
+      expect(divisionMode.getSelectedElement()).toBeNull()
+      expect(divisionMode.getDivisionPoints()).toEqual([])
+    })
+
+    it('should throw error for invalid element type', () => {
+      const invalidElement = { type: 'invalid' as any, element: null }
+
+      expect(() => divisionMode.activate(invalidElement, 2)).toThrow('Unsupported element type for division: invalid')
+    })
+
+    it('should throw error for invalid divisions count', () => {
+      const line = new Line()
+      line.setFirstPoint(0, 0)
+      line.setSecondPoint(4, 0)
+      const element = { type: 'line' as const, element: line }
+
+      expect(() => divisionMode.activate(element, 0)).toThrow('Division count must be greater than 0')
+      expect(() => divisionMode.activate(element, -1)).toThrow('Division count must be greater than 0')
+    })
+
+    it('should find closest division point to mouse position', () => {
+      const line = new Line()
+      line.setFirstPoint(0, 0)
+      line.setSecondPoint(9, 0)
+      const element = { type: 'line' as const, element: line }
+
+      divisionMode.activate(element, 3)
+      
+      // Division points should be at (3, 0) and (6, 0)
+      const mousePoint1 = { x: 2.8, y: 0.1 }
+      const closest1 = divisionMode.getClosestDivisionPoint(mousePoint1, 1.0)
+      expect(closest1).toEqual({ x: 3, y: 0 })
+
+      const mousePoint2 = { x: 5.9, y: 0.2 }
+      const closest2 = divisionMode.getClosestDivisionPoint(mousePoint2, 1.0)
+      expect(closest2).toEqual({ x: 6, y: 0 })
+
+      // Test with point too far away
+      const mousePoint3 = { x: 10, y: 5 }
+      const closest3 = divisionMode.getClosestDivisionPoint(mousePoint3, 1.0)
+      expect(closest3).toBeNull()
+    })
+  })
+})
