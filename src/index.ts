@@ -3,6 +3,7 @@ const p5 = require('p5');
 import { CompassArc } from './compassArc';
 import { Line } from './line';
 import { Selection, SelectableElement } from './selection';
+import { Fill } from './fill';
 
 type P5Instance = {
   createCanvas: (width: number, height: number) => void;
@@ -27,19 +28,27 @@ type P5Instance = {
   doubleClicked?: () => void;
   setup?: () => void;
   draw?: () => void;
+  width: number;
+  height: number;
+  pixels: Uint8ClampedArray;
+  loadPixels: () => void;
+  updatePixels: () => void;
+  get: (x: number, y: number) => number[];
+  set: (x: number, y: number, color: number[]) => void;
 };
 
 let compassArc: CompassArc;
 let lines: Line[] = [];
 let currentLine: Line | null = null;
-let drawingMode: 'compass' | 'line' = 'line'; // Default to line mode for MVP
+let drawingMode: 'compass' | 'line' | 'fill' = 'line'; // Default to line mode for MVP
 let selection: Selection;
+let fill: Fill;
 
 export function hello(): string {
   return 'Hello World';
 }
 
-export function setDrawingMode(mode: 'compass' | 'line'): void {
+export function setDrawingMode(mode: 'compass' | 'line' | 'fill'): void {
   drawingMode = mode;
   // Reset current drawings when switching modes
   if (compassArc) {
@@ -48,7 +57,7 @@ export function setDrawingMode(mode: 'compass' | 'line'): void {
   currentLine = null;
 }
 
-export function getDrawingMode(): 'compass' | 'line' {
+export function getDrawingMode(): 'compass' | 'line' | 'fill' {
   return drawingMode;
 }
 
@@ -67,6 +76,7 @@ export function setup(p: P5Instance): void {
   lines = [];
   currentLine = null;
   selection = new Selection();
+  fill = new Fill();
 }
 
 export function draw(p: P5Instance): void {
@@ -95,6 +105,12 @@ export function draw(p: P5Instance): void {
 }
 
 export function mousePressed(p: P5Instance): void {
+  // Handle fill mode first
+  if (drawingMode === 'fill' && fill) {
+    fill.handleClick(p, p.mouseX, p.mouseY);
+    return;
+  }
+  
   // Handle compass arc drawing first (it has precedence when in progress)
   if (drawingMode === 'compass' && compassArc) {
     const state = compassArc.getState();
@@ -188,6 +204,20 @@ export function getCompassArc() {
 
 export function getSelection() {
   return selection;
+}
+
+export function getFill() {
+  return fill;
+}
+
+export function setFillColor(color: { r: number; g: number; b: number }) {
+  if (fill) {
+    fill.setFillColor(color);
+  }
+}
+
+export function getFillColor() {
+  return fill ? fill.getFillColor() : { r: 0, g: 0, b: 0 };
 }
 
 export function doubleClicked(p: P5Instance): void {
