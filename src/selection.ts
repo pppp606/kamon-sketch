@@ -1,5 +1,5 @@
-import { Line } from './line'
-import { CompassArc } from './compassArc'
+import { Line } from './line.js'
+import { CompassArc } from './compassArc.js'
 
 export type Point = { x: number; y: number }
 

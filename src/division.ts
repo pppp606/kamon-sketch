@@ -1,6 +1,6 @@
-import { Line } from './line'
-import { CompassArc } from './compassArc'
-import { SelectableElement } from './selection'
+import { Line } from './line.js'
+import { CompassArc } from './compassArc.js'
+import { SelectableElement } from './selection.js'
 
 export type Point = { x: number; y: number }
 
