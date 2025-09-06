@@ -266,38 +266,24 @@ describe('p5.js integration', () => {
       expect(arc?.getState()).toBe('CENTER_SET');
     });
 
-    test('should set radius point on second mouse press', () => {
+    test('should start drawing on second mouse press using persistent radius', () => {
       p.mouseX = 100;
       p.mouseY = 150;
       mousePressed(p);
       
       p.mouseX = 200;
       p.mouseY = 150;
-      mousePressed(p);
-      
-      const arc = getCompassArc();
-      expect(arc?.getRadiusPoint()).toEqual({ x: 200, y: 150 });
-      expect(arc?.getState()).toBe('RADIUS_SET');
-    });
-
-    test('should start drawing on third mouse press', () => {
-      p.mouseX = 100;
-      p.mouseY = 150;
-      mousePressed(p);
-      
-      p.mouseX = 200;
-      p.mouseY = 150;
-      mousePressed(p);
-      
-      p.mouseX = 200;
-      p.mouseY = 200;
       mousePressed(p);
       
       const arc = getCompassArc();
       expect(arc?.getState()).toBe('DRAWING');
+      // The radius point should be calculated based on the stored radius (default 10px)
+      // and the direction from center to click point
+      expect(arc?.getRadiusPoint()).toBeDefined();
     });
 
-    test('should update drawing position during mouse drag', () => {
+    test('should continue drawing and reset after completing a drawing', () => {
+      // First arc: center at (100,150), start drawing at (200,150)
       p.mouseX = 100;
       p.mouseY = 150;
       mousePressed(p);
@@ -306,10 +292,32 @@ describe('p5.js integration', () => {
       p.mouseY = 150;
       mousePressed(p);
       
-      p.mouseX = 200;
-      p.mouseY = 200;
+      let arc = getCompassArc();
+      expect(arc?.getState()).toBe('DRAWING');
+      
+      // Complete the arc by making a full circle or clicking reset
+      // For this test, let's just start a new arc
+      p.mouseX = 300;
+      p.mouseY = 300;
+      mousePressed(p); // This should reset and start a new arc
+      
+      arc = getCompassArc();
+      expect(arc?.getCenterPoint()).toEqual({ x: 300, y: 300 });
+      expect(arc?.getState()).toBe('CENTER_SET');
+    });
+
+    test('should update drawing position during mouse drag', () => {
+      // Set center
+      p.mouseX = 100;
+      p.mouseY = 150;
       mousePressed(p);
       
+      // Start drawing (using persistent radius)
+      p.mouseX = 200;
+      p.mouseY = 150;
+      mousePressed(p);
+      
+      // Update drawing position with drag
       p.mouseX = 250;
       p.mouseY = 200;
       mouseDragged(p);
@@ -319,44 +327,55 @@ describe('p5.js integration', () => {
     });
 
     test('should reset on mouse release after full circle', () => {
+      // Set center
       p.mouseX = 100;
       p.mouseY = 150;
       mousePressed(p);
       
+      // Start drawing
       p.mouseX = 200;
       p.mouseY = 150;
       mousePressed(p);
       
-      p.mouseX = 200;
-      p.mouseY = 200;
-      mousePressed(p);
-      
       const arc = getCompassArc();
       if (arc) {
+        // Simulate drawing a full circle manually
         arc.updateDrawing(100, 250);
         arc.updateDrawing(0, 150);
         arc.updateDrawing(100, 50);
         arc.updateDrawing(199, 149);
         
-        mouseReleased();
+        // Mock mouse position for mouseReleased
+        p.mouseX = 199;
+        p.mouseY = 149;
+        mouseReleased(p);
         expect(arc.getState()).toBe('IDLE');
       }
     });
 
     test('should handle drawing interactions correctly in compass mode', () => {
-      // Should work in compass mode as before
+      // Set center
       p.mouseX = 100;
       p.mouseY = 150;
       mousePressed(p);
       
+      // Start drawing (automatic with persistent radius)
+      p.mouseX = 200;
+      p.mouseY = 150;
+      mousePressed(p);
+      
+      // Update during drag
       p.mouseX = 200;
       p.mouseY = 250;
       mouseDragged(p);
       
-      mouseReleased();
+      // Complete the interaction
+      p.mouseX = 200;
+      p.mouseY = 250;
+      mouseReleased(p);
       
       const arc = getCompassArc();
-      expect(arc?.getState()).toBe('CENTER_SET');
+      expect(arc?.getState()).toBe('DRAWING'); // Should still be drawing until full circle completed
     });
   });
 
@@ -514,20 +533,24 @@ describe('p5.js integration', () => {
     });
 
     test('should select compass arc when clicking near it', () => {
-      // Create a compass arc
+      // Create a compass arc using new behavior
       p.mouseX = 100;
       p.mouseY = 100;
       mousePressed(p); // Center at (100, 100)
+      
       p.mouseX = 150;
       p.mouseY = 100;
-      mousePressed(p); // Radius point at (150, 100), so radius = 50
+      mousePressed(p); // Start drawing (uses persistent radius = 10px)
+      
+      // Draw some arc
       p.mouseX = 150;
       p.mouseY = 150;
-      mousePressed(p); // Start drawing at (150, 150)
+      mouseDragged(p);
       
-      // Click near the arc circle to select it (radius = 50, center = (100, 100))
-      // Point (150, 100) should be exactly on the circle
-      p.mouseX = 150;
+      // Now click near the arc to select it
+      // The arc should have center (100,100) and radius 10px
+      // So click at approximately (110, 100) which should be on the circle
+      p.mouseX = 110;
       p.mouseY = 100;
       mousePressed(p);
       

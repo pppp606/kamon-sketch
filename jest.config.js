@@ -26,7 +26,7 @@ export default {
       displayName: 'node',
       preset: 'ts-jest/presets/default-esm',
       extensionsToTreatAsEsm: ['.ts'],
-      testMatch: ['<rootDir>/test/index.test.ts', '<rootDir>/test/compassArc.test.ts', '<rootDir>/test/line.test.ts', '<rootDir>/test/selection.test.ts', '<rootDir>/test/division.test.ts', '<rootDir>/test/fill.test.ts'],
+      testMatch: ['<rootDir>/test/index.test.ts', '<rootDir>/test/compassArc.test.ts', '<rootDir>/test/compassRadiusState.test.ts', '<rootDir>/test/line.test.ts', '<rootDir>/test/selection.test.ts', '<rootDir>/test/division.test.ts', '<rootDir>/test/fill.test.ts'],
       collectCoverageFrom: [
         'src/**/*.ts',
         '!src/**/*.d.ts',
@@ -47,7 +47,7 @@ export default {
       displayName: 'jsdom',
       preset: 'ts-jest/presets/default-esm',
       extensionsToTreatAsEsm: ['.ts'],
-      testMatch: ['<rootDir>/test/draw.test.ts'],
+      testMatch: ['<rootDir>/test/draw.test.ts', '<rootDir>/test/compassRadiusPersistence.test.ts', '<rootDir>/test/compassController.test.ts'],
       collectCoverageFrom: [
         'src/**/*.ts',
         '!src/**/*.d.ts',
