@@ -1,5 +1,5 @@
 // p5.js is loaded globally via script tag
-declare const p5: any;
+declare const p5: new (sketch: (p: P5Instance) => void) => void;
 import { CompassArc } from './compassArc';
 import { Line } from './line';
 import { Selection, SelectableElement } from './selection';
@@ -7,6 +7,7 @@ import { Fill } from './fill';
 import { P5Instance } from './types/p5';
 
 let compassArc: CompassArc;
+let completedArcs: CompassArc[] = [];
 let lines: Line[] = [];
 let currentLine: Line | null = null;
 let drawingMode: 'compass' | 'line' | 'fill' = 'line'; // Default to line mode for MVP
@@ -43,6 +44,7 @@ export function setup(p: P5Instance): void {
   p.createCanvas(p.windowWidth, p.windowHeight - 100); // Leave space for UI buttons
   p.background(220);
   compassArc = new CompassArc();
+  completedArcs = [];
   lines = [];
   currentLine = null;
   selection = new Selection();
@@ -56,6 +58,11 @@ export function draw(p: P5Instance): void {
   // Draw all completed lines
   for (const line of lines) {
     line.draw(p);
+  }
+  
+  // Draw all completed arcs
+  for (const arc of completedArcs) {
+    arc.draw(p);
   }
   
   // Draw current line being created
@@ -92,9 +99,7 @@ export function mousePressed(p: P5Instance): void {
     } else if (state === 'CENTER_SET') {
       selection.setSelectedElement(null); // Clear selection when setting radius
       compassArc.setRadius(p.mouseX, p.mouseY);
-      return;
-    } else if (state === 'RADIUS_SET') {
-      selection.setSelectedElement(null); // Clear selection when starting to draw
+      // Immediately start drawing after setting radius
       compassArc.startDrawing();
       compassArc.updateDrawing(p.mouseX, p.mouseY);
       return;
@@ -105,6 +110,7 @@ export function mousePressed(p: P5Instance): void {
   // Selection logic (only when not in middle of compass arc creation)
   const selectableElements: SelectableElement[] = [
     ...lines.map(line => ({ type: 'line' as const, element: line })),
+    ...completedArcs.map(arc => ({ type: 'arc' as const, element: arc })),
     ...(compassArc && (compassArc.getState() === 'DRAWING' || compassArc.getState() === 'RADIUS_SET') ? [{ type: 'arc' as const, element: compassArc }] : [])
   ];
   
@@ -160,9 +166,13 @@ export function mouseDragged(p: P5Instance): void {
 export function mouseReleased(): void {
   if (drawingMode === 'compass' && compassArc) {
     if (compassArc.getState() === 'DRAWING') {
-      if (compassArc.isFullCircle()) {
-        compassArc.reset();
+      // Save the completed arc before resetting
+      const completedArc = compassArc.createCompletedCopy();
+      if (completedArc) {
+        completedArcs.push(completedArc);
       }
+      // Reset to start a new arc
+      compassArc.reset();
     }
   }
   // Line mode doesn't use mouse release events
@@ -248,33 +258,33 @@ function setupModeButtons(): void {
 
   function updateActiveButton(activeMode: 'compass' | 'line' | 'fill'): void {
     // Remove active class from all buttons
-    [lineBtn, compassBtn, fillBtn].forEach(btn => btn.classList.remove('active'));
+    [lineBtn!, compassBtn!, fillBtn!].forEach(btn => btn.classList.remove('active'));
     
     // Add active class to current mode button
     switch (activeMode) {
       case 'line':
-        lineBtn.classList.add('active');
+        lineBtn!.classList.add('active');
         break;
       case 'compass':
-        compassBtn.classList.add('active');
+        compassBtn!.classList.add('active');
         break;
       case 'fill':
-        fillBtn.classList.add('active');
+        fillBtn!.classList.add('active');
         break;
     }
   }
 
-  lineBtn.addEventListener('click', () => {
+  lineBtn!.addEventListener('click', () => {
     setDrawingMode('line');
     updateActiveButton('line');
   });
 
-  compassBtn.addEventListener('click', () => {
+  compassBtn!.addEventListener('click', () => {
     setDrawingMode('compass');
     updateActiveButton('compass');
   });
 
-  fillBtn.addEventListener('click', () => {
+  fillBtn!.addEventListener('click', () => {
     setDrawingMode('fill');
     updateActiveButton('fill');
   });
