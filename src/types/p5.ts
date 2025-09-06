@@ -25,6 +25,8 @@ export interface P5Instance {
   setup?: () => void
   draw?: () => void
   key: string
+  keyIsDown?: (code: number) => boolean
+  SHIFT?: number
   width: number
   height: number
   pixels: Uint8ClampedArray

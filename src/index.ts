@@ -13,6 +13,22 @@ let drawingMode: 'compass' | 'line' | 'fill' = 'line'; // Default to line mode f
 let selection: Selection;
 let fill: Fill;
 
+// Utility function to detect Shift key state
+function isShiftPressed(p: P5Instance, event?: { shiftKey?: boolean }): boolean {
+  // Check event first (most reliable)
+  if (event?.shiftKey !== undefined) {
+    return event.shiftKey;
+  }
+  
+  // Fallback to p5.js keyIsDown if available
+  if (p.keyIsDown && p.SHIFT !== undefined) {
+    return p.keyIsDown(p.SHIFT);
+  }
+  
+  // Final fallback: false (no Shift key detection available)
+  return false;
+}
+
 export function hello(): string {
   return 'Hello World';
 }
@@ -73,7 +89,7 @@ export function draw(p: P5Instance): void {
   }
 }
 
-export function mousePressed(p: P5Instance): void {
+export function mousePressed(p: P5Instance, event?: { shiftKey?: boolean }): void {
   // Handle fill mode first
   if (drawingMode === 'fill' && fill) {
     fill.handleClick(p, p.mouseX, p.mouseY);
@@ -88,8 +104,9 @@ export function mousePressed(p: P5Instance): void {
     // Only handle compass clicks immediately if we're not in DRAWING or IDLE state
     if (state !== 'DRAWING' && state !== 'IDLE') {
       // Handle compass controller click (includes Shift+click support)
-      const mockEvent = { shiftKey: false }; // For now, assume no Shift key support in this context
-      compassController.handleClick(p.mouseX, p.mouseY, mockEvent);
+      const shiftPressed = isShiftPressed(p, event);
+      const compassEvent = { shiftKey: shiftPressed };
+      compassController.handleClick(p.mouseX, p.mouseY, compassEvent);
       compassHandledClick = true;
       
       // Clear selection when starting compass operations
@@ -150,8 +167,9 @@ export function mousePressed(p: P5Instance): void {
     }
   } else if (drawingMode === 'compass' && compassController && !compassHandledClick) {
     // Handle compass clicks that didn't result in selection
-    const mockEvent = { shiftKey: false }; // For now, assume no Shift key support in this context
-    compassController.handleClick(p.mouseX, p.mouseY, mockEvent);
+    const shiftPressed = isShiftPressed(p, event);
+    const compassEvent = { shiftKey: shiftPressed };
+    compassController.handleClick(p.mouseX, p.mouseY, compassEvent);
   }
 }
 
@@ -213,8 +231,8 @@ export function doubleClicked(p: P5Instance): void {
   } else if (drawingMode === 'compass') {
     // For compass mode, start new arc with center at the closest point
     compassController.reset()
-    const mockEvent = { shiftKey: false }
-    compassController.handleClick(closestPoint.x, closestPoint.y, mockEvent)
+    const compassEvent = { shiftKey: false } // Double-click never uses Shift
+    compassController.handleClick(closestPoint.x, closestPoint.y, compassEvent)
   }
   
   // Clear selection after starting new drawing
@@ -258,7 +276,7 @@ export function createSketch(): void {
     p.mouseReleased = () => mouseReleased(p);
     p.doubleClicked = () => doubleClicked(p);
     p.keyPressed = () => keyPressed(p);
-    p.mousePressed = (event?: { button?: number }) => {
+    p.mousePressed = (event?: { button?: number; shiftKey?: boolean }) => {
       // Handle right-click cancellation
       if (event && event.button === 2) {
         if (drawingMode === 'compass' && compassController) {
@@ -266,7 +284,7 @@ export function createSketch(): void {
         }
         return false; // Prevent context menu
       }
-      mousePressed(p);
+      mousePressed(p, event);
       return true; // Allow normal processing
     };
   });
