@@ -1,5 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const p5 = require('p5');
+// p5.js is loaded globally via script tag
+declare const p5: any;
 import { CompassArc } from './compassArc';
 import { Line } from './line';
 import { Selection, SelectableElement } from './selection';
@@ -39,7 +39,8 @@ export function getCurrentLine(): Line | null {
 }
 
 export function setup(p: P5Instance): void {
-  p.createCanvas(400, 400);
+  // Use full window size for canvas
+  p.createCanvas(p.windowWidth, p.windowHeight - 100); // Leave space for UI buttons
   p.background(220);
   compassArc = new CompassArc();
   lines = [];
@@ -236,6 +237,49 @@ export function startDrawingFromSelectedElement(): boolean {
   return false
 }
 
+function setupModeButtons(): void {
+  const lineBtn = document.getElementById('line-btn');
+  const compassBtn = document.getElementById('compass-btn');
+  const fillBtn = document.getElementById('fill-btn');
+
+  if (!lineBtn || !compassBtn || !fillBtn) {
+    return;
+  }
+
+  function updateActiveButton(activeMode: 'compass' | 'line' | 'fill'): void {
+    // Remove active class from all buttons
+    [lineBtn, compassBtn, fillBtn].forEach(btn => btn.classList.remove('active'));
+    
+    // Add active class to current mode button
+    switch (activeMode) {
+      case 'line':
+        lineBtn.classList.add('active');
+        break;
+      case 'compass':
+        compassBtn.classList.add('active');
+        break;
+      case 'fill':
+        fillBtn.classList.add('active');
+        break;
+    }
+  }
+
+  lineBtn.addEventListener('click', () => {
+    setDrawingMode('line');
+    updateActiveButton('line');
+  });
+
+  compassBtn.addEventListener('click', () => {
+    setDrawingMode('compass');
+    updateActiveButton('compass');
+  });
+
+  fillBtn.addEventListener('click', () => {
+    setDrawingMode('fill');
+    updateActiveButton('fill');
+  });
+}
+
 export function createSketch(): void {
   new p5((p: P5Instance) => {
     p.setup = () => setup(p);
@@ -249,5 +293,14 @@ export function createSketch(): void {
 
 // Auto-initialize if running in browser
 if (typeof window !== 'undefined') {
-  createSketch();
+  // Wait for DOM to be ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setupModeButtons();
+      createSketch();
+    });
+  } else {
+    setupModeButtons();
+    createSketch();
+  }
 }

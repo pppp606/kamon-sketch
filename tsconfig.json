@@ -24,6 +24,7 @@
     "removeComments": false,
     "importHelpers": true,
     "skipLibCheck": true,
+    "allowImportingTsExtensions": false,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true
@@ -32,7 +33,6 @@
     "src/**/*"
   ],
   "exclude": [
-    "node_modules/p5",
     "node_modules",
     "dist",
     "test"
