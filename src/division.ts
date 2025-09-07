@@ -1,12 +1,12 @@
-import { Line } from './line.js'
-import { CompassArc } from './compassArc.js'
-import { SelectableElement } from './selection.js'
+import { Line } from "./line.js";
+import { CompassArc } from "./compassArc.js";
+import { SelectableElement } from "./selection.js";
 
-export type Point = { x: number; y: number }
+export type Point = { x: number; y: number };
 
 export interface DivisionPoint {
-  x: number
-  y: number
+  x: number;
+  y: number;
 }
 
 export interface Color {
@@ -29,51 +29,55 @@ interface P5DrawingContext {
 const RENDER_CONSTANTS = {
   // Floating point precision tolerance for coordinate comparisons
   COORDINATE_EPSILON: 0.01,
-  
+
   // Default sizes and thresholds
   DEFAULT_DIVISION_POINT_SIZE: 6,
   DEFAULT_DIVISION_POINT_THRESHOLD: 15,
-  
+
   // Colors
   COLORS: {
     BLACK: { r: 0, g: 0, b: 0 } as Color,
     DIVISION_POINT_DEFAULT: { r: 0, g: 0, b: 255 } as Color,
-  }
-} as const
+  },
+} as const;
 
 /**
  * Divides a line segment between two points into equal parts
  * @param pointA - Starting point of the line segment
- * @param pointB - Ending point of the line segment  
+ * @param pointB - Ending point of the line segment
  * @param divisions - Number of divisions to create (must be > 0)
  * @returns Array of division points (divisions-1 points for equal segments)
  */
-export function divideTwoPoints(pointA: Point, pointB: Point, divisions: number): DivisionPoint[] {
+export function divideTwoPoints(
+  pointA: Point,
+  pointB: Point,
+  divisions: number,
+): DivisionPoint[] {
   if (divisions <= 0) {
-    throw new Error('Division count must be greater than 0')
+    throw new Error("Division count must be greater than 0");
   }
-  
+
   // For n divisions, we need n-1 division points
-  const numDivisionPoints = divisions - 1
-  
+  const numDivisionPoints = divisions - 1;
+
   if (numDivisionPoints === 0) {
-    return [] // No division needed
+    return []; // No division needed
   }
-  
-  const divisionPoints: DivisionPoint[] = []
-  
+
+  const divisionPoints: DivisionPoint[] = [];
+
   // Calculate the step size for each division
-  const dx = (pointB.x - pointA.x) / divisions
-  const dy = (pointB.y - pointA.y) / divisions
-  
+  const dx = (pointB.x - pointA.x) / divisions;
+  const dy = (pointB.y - pointA.y) / divisions;
+
   // Generate division points
   for (let i = 1; i <= numDivisionPoints; i++) {
-    const x = pointA.x + (dx * i)
-    const y = pointA.y + (dy * i)
-    divisionPoints.push({ x, y })
+    const x = pointA.x + dx * i;
+    const y = pointA.y + dy * i;
+    divisionPoints.push({ x, y });
   }
-  
-  return divisionPoints
+
+  return divisionPoints;
 }
 
 /**
@@ -82,20 +86,25 @@ export function divideTwoPoints(pointA: Point, pointB: Point, divisions: number)
  * @param divisions - Number of divisions to create (must be > 0)
  * @returns Array of division points (divisions-1 points for equal segments)
  */
-export function divideLineSegment(line: Line, divisions: number): DivisionPoint[] {
+export function divideLineSegment(
+  line: Line,
+  divisions: number,
+): DivisionPoint[] {
   if (divisions <= 0) {
-    throw new Error('Division count must be greater than 0')
+    throw new Error("Division count must be greater than 0");
   }
-  
-  const firstPoint = line.getFirstPoint()
-  const secondPoint = line.getSecondPoint()
-  
+
+  const firstPoint = line.getFirstPoint();
+  const secondPoint = line.getSecondPoint();
+
   if (!firstPoint || !secondPoint) {
-    throw new Error('Line must be completed (have both points) before division')
+    throw new Error(
+      "Line must be completed (have both points) before division",
+    );
   }
-  
+
   // Use our existing divideTwoPoints function
-  return divideTwoPoints(firstPoint, secondPoint, divisions)
+  return divideTwoPoints(firstPoint, secondPoint, divisions);
 }
 
 /**
@@ -104,57 +113,60 @@ export function divideLineSegment(line: Line, divisions: number): DivisionPoint[
  * @param divisions - Number of divisions to create (must be > 0)
  * @returns Array of division points along the radius line (divisions-1 points)
  */
-export function divideRadiusPoints(arc: CompassArc, divisions: number): DivisionPoint[] {
+export function divideRadiusPoints(
+  arc: CompassArc,
+  divisions: number,
+): DivisionPoint[] {
   if (divisions <= 0) {
-    throw new Error('Division count must be greater than 0')
+    throw new Error("Division count must be greater than 0");
   }
-  
-  const centerPoint = arc.getCenterPoint()
-  const radiusPoint = arc.getRadiusPoint()
-  
+
+  const centerPoint = arc.getCenterPoint();
+  const radiusPoint = arc.getRadiusPoint();
+
   if (!centerPoint || !radiusPoint) {
-    throw new Error('Arc must have both center and radius set before division')
+    throw new Error("Arc must have both center and radius set before division");
   }
-  
+
   // Use our existing divideTwoPoints function to divide the radius line
-  return divideTwoPoints(centerPoint, radiusPoint, divisions)
+  return divideTwoPoints(centerPoint, radiusPoint, divisions);
 }
 
 /**
  * Manages division mode state and interactions
  */
 export class DivisionMode {
-  private active = false
-  private selectedElement: SelectableElement | null = null
-  private divisions = 2 // Default to dividing into 2 parts
-  private divisionPoints: DivisionPoint[] = []
+  private active = false;
+  private selectedElement: SelectableElement | null = null;
+  private divisions = 2; // Default to dividing into 2 parts
+  private divisionPoints: DivisionPoint[] = [];
 
   /**
    * Check if division mode is currently active
    */
   isActive(): boolean {
-    return this.active
+    return this.active;
   }
 
   /**
    * Get the currently selected element for division
    */
   getSelectedElement(): SelectableElement | null {
-    return this.selectedElement
+    return this.selectedElement;
   }
 
   /**
    * Get the current number of divisions
    */
   getDivisions(): number {
-    return this.divisions
+    return this.divisions;
   }
 
   /**
    * Get the calculated division points
    */
   getDivisionPoints(): DivisionPoint[] {
-    return [...this.divisionPoints] // Return copy to prevent mutation
+    return [...this.divisionPoints]; // Return copy to prevent mutation
   }
 
   /**
@@ -164,13 +176,13 @@ export class DivisionMode {
    */
   activate(element: SelectableElement, divisions: number): void {
     if (divisions <= 0) {
-      throw new Error('Division count must be greater than 0')
+      throw new Error("Division count must be greater than 0");
     }
 
-    this.selectedElement = element
-    this.divisions = divisions
-    this.active = true
-    this.calculateDivisionPoints()
+    this.selectedElement = element;
+    this.divisions = divisions;
+    this.active = true;
+    this.calculateDivisionPoints();
   }
 
   /**
@@ -179,24 +191,24 @@ export class DivisionMode {
    */
   setDivisions(divisions: number): void {
     if (divisions <= 0) {
-      throw new Error('Division count must be greater than 0')
+      throw new Error("Division count must be greater than 0");
     }
 
     if (!this.active || !this.selectedElement) {
-      return // No-op if not active
+      return; // No-op if not active
     }
 
-    this.divisions = divisions
-    this.calculateDivisionPoints()
+    this.divisions = divisions;
+    this.calculateDivisionPoints();
   }
 
   /**
    * Deactivate division mode and clear state
    */
   deactivate(): void {
-    this.active = false
-    this.selectedElement = null
-    this.divisionPoints = []
+    this.active = false;
+    this.selectedElement = null;
+    this.divisionPoints = [];
   }
 
   /**
@@ -205,27 +217,33 @@ export class DivisionMode {
    * @param threshold - Maximum distance threshold for selection
    * @returns Closest division point within threshold, or null if none found
    */
-  getClosestDivisionPoint(mousePoint: Point, threshold: number = RENDER_CONSTANTS.DEFAULT_DIVISION_POINT_THRESHOLD): DivisionPoint | null {
+  getClosestDivisionPoint(
+    mousePoint: Point,
+    threshold: number = RENDER_CONSTANTS.DEFAULT_DIVISION_POINT_THRESHOLD,
+  ): DivisionPoint | null {
     if (!this.active || this.divisionPoints.length === 0) {
-      return null
+      return null;
     }
 
-    let closestPoint: DivisionPoint | null = null
-    let closestDistanceSquared = Infinity
-    const thresholdSquared = threshold * threshold // Avoid sqrt by comparing squared distances
+    let closestPoint: DivisionPoint | null = null;
+    let closestDistanceSquared = Infinity;
+    const thresholdSquared = threshold * threshold; // Avoid sqrt by comparing squared distances
 
     for (const divisionPoint of this.divisionPoints) {
-      const dx = mousePoint.x - divisionPoint.x
-      const dy = mousePoint.y - divisionPoint.y
-      const distanceSquared = dx * dx + dy * dy
+      const dx = mousePoint.x - divisionPoint.x;
+      const dy = mousePoint.y - divisionPoint.y;
+      const distanceSquared = dx * dx + dy * dy;
 
-      if (distanceSquared <= thresholdSquared && distanceSquared < closestDistanceSquared) {
-        closestDistanceSquared = distanceSquared
-        closestPoint = divisionPoint
+      if (
+        distanceSquared <= thresholdSquared &&
+        distanceSquared < closestDistanceSquared
+      ) {
+        closestDistanceSquared = distanceSquared;
+        closestPoint = divisionPoint;
       }
     }
 
-    return closestPoint
+    return closestPoint;
   }
 
   /**
@@ -235,29 +253,33 @@ export class DivisionMode {
    * @param size - Size of division point markers (default: 6)
    */
   draw(
-    p: P5DrawingContext, 
-    color: Color = RENDER_CONSTANTS.COLORS.DIVISION_POINT_DEFAULT, 
-    size: number = RENDER_CONSTANTS.DEFAULT_DIVISION_POINT_SIZE
+    p: P5DrawingContext,
+    color: Color = RENDER_CONSTANTS.COLORS.DIVISION_POINT_DEFAULT,
+    size: number = RENDER_CONSTANTS.DEFAULT_DIVISION_POINT_SIZE,
   ): void {
     if (!this.active || this.divisionPoints.length === 0) {
-      return
+      return;
     }
 
-    p.push()
-    p.fill(color.r, color.g, color.b)
-    p.strokeWeight(1)
-    p.stroke(0, 0, 0) // Black outline
+    p.push();
+    p.fill(color.r, color.g, color.b);
+    p.strokeWeight(1);
+    p.stroke(0, 0, 0); // Black outline
 
     for (const point of this.divisionPoints) {
       // Use coordinate epsilon for precise rendering
-      const renderX = Math.round(point.x / RENDER_CONSTANTS.COORDINATE_EPSILON) * RENDER_CONSTANTS.COORDINATE_EPSILON
-      const renderY = Math.round(point.y / RENDER_CONSTANTS.COORDINATE_EPSILON) * RENDER_CONSTANTS.COORDINATE_EPSILON
-      
+      const renderX =
+        Math.round(point.x / RENDER_CONSTANTS.COORDINATE_EPSILON) *
+        RENDER_CONSTANTS.COORDINATE_EPSILON;
+      const renderY =
+        Math.round(point.y / RENDER_CONSTANTS.COORDINATE_EPSILON) *
+        RENDER_CONSTANTS.COORDINATE_EPSILON;
+
       // Draw small circles at each division point
-      p.ellipse(renderX, renderY, size, size)
+      p.ellipse(renderX, renderY, size, size);
     }
 
-    p.pop()
+    p.pop();
   }
 
   /**
@@ -265,18 +287,26 @@ export class DivisionMode {
    */
   private calculateDivisionPoints(): void {
     if (!this.selectedElement) {
-      this.divisionPoints = []
-      return
+      this.divisionPoints = [];
+      return;
     }
 
-    if (this.selectedElement.type === 'line') {
-      this.divisionPoints = divideLineSegment(this.selectedElement.element, this.divisions)
-    } else if (this.selectedElement.type === 'arc') {
-      this.divisionPoints = divideRadiusPoints(this.selectedElement.element, this.divisions)
+    if (this.selectedElement.type === "line") {
+      this.divisionPoints = divideLineSegment(
+        this.selectedElement.element,
+        this.divisions,
+      );
+    } else if (this.selectedElement.type === "arc") {
+      this.divisionPoints = divideRadiusPoints(
+        this.selectedElement.element,
+        this.divisions,
+      );
     } else {
       // This should never happen due to type constraints, but satisfy TypeScript
-      const unknownType = this.selectedElement as { type: string }
-      throw new Error(`Unsupported element type for division: ${unknownType.type}`)
+      const unknownType = this.selectedElement as { type: string };
+      throw new Error(
+        `Unsupported element type for division: ${unknownType.type}`,
+      );
     }
   }
 }
@@ -286,17 +316,17 @@ export class DivisionMode {
  * Provides convenient methods for common division operations
  */
 export class DivisionIntegrationHelper {
-  private divisionMode: DivisionMode
-  
+  private divisionMode: DivisionMode;
+
   constructor() {
-    this.divisionMode = new DivisionMode()
+    this.divisionMode = new DivisionMode();
   }
 
   /**
    * Get the division mode instance
    */
   getDivisionMode(): DivisionMode {
-    return this.divisionMode
+    return this.divisionMode;
   }
 
   /**
@@ -305,16 +335,22 @@ export class DivisionIntegrationHelper {
    * @param divisions - Number of divisions (2, 3, 4, 5, or custom)
    * @returns Success status and any error message
    */
-  activateQuickDivision(element: SelectableElement | null, divisions: 2 | 3 | 4 | 5 | number): { success: boolean; error?: string } {
+  activateQuickDivision(
+    element: SelectableElement | null,
+    divisions: 2 | 3 | 4 | 5 | number,
+  ): { success: boolean; error?: string } {
     if (!element) {
-      return { success: false, error: 'No element selected' }
+      return { success: false, error: "No element selected" };
     }
 
     try {
-      this.divisionMode.activate(element, divisions)
-      return { success: true }
+      this.divisionMode.activate(element, divisions);
+      return { success: true };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
     }
   }
 
@@ -325,21 +361,24 @@ export class DivisionIntegrationHelper {
    * @param threshold - Distance threshold for selection
    */
   handleMouseInteraction(
-    mousePoint: Point, 
+    mousePoint: Point,
     onDivisionPointSelected: (point: DivisionPoint) => void,
-    threshold?: number
+    threshold?: number,
   ): boolean {
     if (!this.divisionMode.isActive()) {
-      return false
+      return false;
     }
 
-    const closestPoint = this.divisionMode.getClosestDivisionPoint(mousePoint, threshold)
+    const closestPoint = this.divisionMode.getClosestDivisionPoint(
+      mousePoint,
+      threshold,
+    );
     if (closestPoint) {
-      onDivisionPointSelected(closestPoint)
-      return true
+      onDivisionPointSelected(closestPoint);
+      return true;
     }
 
-    return false
+    return false;
   }
 
   /**
@@ -347,18 +386,20 @@ export class DivisionIntegrationHelper {
    */
   getDivisionStatus(): {
     isActive: boolean;
-    selectedElementType?: 'line' | 'arc';
+    selectedElementType?: "line" | "arc";
     divisions?: number;
     pointCount?: number;
   } {
-    const selectedElement = this.divisionMode.getSelectedElement()
-    
+    const selectedElement = this.divisionMode.getSelectedElement();
+
     return {
       isActive: this.divisionMode.isActive(),
       selectedElementType: selectedElement?.type,
-      divisions: this.divisionMode.isActive() ? this.divisionMode.getDivisions() : undefined,
-      pointCount: this.divisionMode.getDivisionPoints().length
-    }
+      divisions: this.divisionMode.isActive()
+        ? this.divisionMode.getDivisions()
+        : undefined,
+      pointCount: this.divisionMode.getDivisionPoints().length,
+    };
   }
 
   /**
@@ -366,22 +407,23 @@ export class DivisionIntegrationHelper {
    */
   cycleDivisions(): void {
     if (!this.divisionMode.isActive()) {
-      return
+      return;
     }
 
-    const current = this.divisionMode.getDivisions()
-    const commonDivisions: number[] = [2, 3, 4, 5]
-    const currentIndex = commonDivisions.indexOf(current)
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % commonDivisions.length
-    const nextDivisions = commonDivisions[nextIndex]! // Non-null assertion - array bounds are guaranteed
-    
-    this.divisionMode.setDivisions(nextDivisions)
+    const current = this.divisionMode.getDivisions();
+    const commonDivisions: number[] = [2, 3, 4, 5];
+    const currentIndex = commonDivisions.indexOf(current);
+    const nextIndex =
+      currentIndex === -1 ? 0 : (currentIndex + 1) % commonDivisions.length;
+    const nextDivisions = commonDivisions[nextIndex]!; // Non-null assertion - array bounds are guaranteed
+
+    this.divisionMode.setDivisions(nextDivisions);
   }
 
   /**
    * Deactivate division mode and clear state
    */
   deactivate(): void {
-    this.divisionMode.deactivate()
+    this.divisionMode.deactivate();
   }
 }
