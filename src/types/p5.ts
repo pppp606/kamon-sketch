@@ -25,6 +25,8 @@ export interface P5Instance {
   draw?: () => void
   width: number
   height: number
+  windowWidth: number
+  windowHeight: number
   pixels: Uint8ClampedArray
   loadPixels: () => void
   updatePixels: () => void

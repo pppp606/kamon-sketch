@@ -43,12 +43,14 @@ describe('p5.js Drawing Tests', () => {
       push: jest.fn(),
       pop: jest.fn(),
       noFill: jest.fn(),
+      windowWidth: 800,
+      windowHeight: 600,
     } as any;
   });
 
   test('should create canvas with correct dimensions', () => {
     setup(p);
-    expect(p.createCanvas).toHaveBeenCalledWith(400, 400);
+    expect(p.createCanvas).toHaveBeenCalledWith(800, 500);
     expect(p.background).toHaveBeenCalledWith(220);
   });
 

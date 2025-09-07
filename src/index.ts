@@ -291,6 +291,12 @@ function setupModeButtons(): void {
 }
 
 export function createSketch(): void {
+  // Check if p5 is available globally (browser environment)
+  if (typeof p5 === 'undefined') {
+    console.warn('p5.js is not loaded. Skipping sketch creation.');
+    return;
+  }
+  
   new p5((p: P5Instance) => {
     p.setup = () => setup(p);
     p.draw = () => draw(p);

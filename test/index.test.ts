@@ -76,6 +76,8 @@ describe('p5.js integration', () => {
       noFill: jest.fn(),
       mouseX: 150,
       mouseY: 200,
+      windowWidth: 800,
+      windowHeight: 600,
       mousePressed: jest.fn(),
       mouseDragged: jest.fn(),
       mouseReleased: jest.fn(),
@@ -87,7 +89,7 @@ describe('p5.js integration', () => {
   test('setup should initialize canvas and CompassArc', () => {
     setup(p);
     
-    expect(p.createCanvas).toHaveBeenCalledWith(400, 400);
+    expect(p.createCanvas).toHaveBeenCalledWith(800, 500);
     expect(p.background).toHaveBeenCalledWith(220);
   });
 
@@ -277,21 +279,25 @@ describe('p5.js integration', () => {
       
       const arc = getCompassArc();
       expect(arc?.getRadiusPoint()).toEqual({ x: 200, y: 150 });
-      expect(arc?.getState()).toBe('RADIUS_SET');
+      // After setting radius, it immediately starts drawing
+      expect(arc?.getState()).toBe('DRAWING');
     });
 
-    test('should start drawing on third mouse press', () => {
+    test('should continue drawing state after setting radius', () => {
+      // Set center
       p.mouseX = 100;
       p.mouseY = 150;
       mousePressed(p);
       
+      // Set radius (and immediately start drawing)
       p.mouseX = 200;
       p.mouseY = 150;
       mousePressed(p);
       
+      // Drag to draw
       p.mouseX = 200;
       p.mouseY = 200;
-      mousePressed(p);
+      mouseDragged(p);
       
       const arc = getCompassArc();
       expect(arc?.getState()).toBe('DRAWING');
