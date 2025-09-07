@@ -149,6 +149,22 @@ export class CompassArc {
     this.resetAngleTracking()
   }
 
+  createCompletedCopy(): CompassArc | null {
+    if (this.state !== 'DRAWING' || !this.centerPoint || !this.radiusPoint || !this.currentPoint) {
+      return null
+    }
+
+    const copy = new CompassArc()
+    copy.centerPoint = { ...this.centerPoint }
+    copy.radiusPoint = { ...this.radiusPoint }
+    copy.currentPoint = { ...this.currentPoint }
+    copy.state = 'DRAWING'
+    copy.accumulatedAngle = this.accumulatedAngle
+    copy.lastAngle = this.lastAngle
+
+    return copy
+  }
+
   private resetAngleTracking(): void {
     this.lastAngle = null
     this.accumulatedAngle = 0
