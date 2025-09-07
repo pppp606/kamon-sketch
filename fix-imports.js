@@ -14,7 +14,7 @@ function fixImports(filePath) {
   const fixedContent = content.replace(
     /from ['"](\.[^'"]*?)['"];/g, 
     (match, importPath) => {
-      if (!importPath.endsWith('.js') && !importPath.includes('/')) {
+      if (!importPath.endsWith('.js')) {
         return `from '${importPath}.js';`;
       }
       return match;
@@ -22,7 +22,7 @@ function fixImports(filePath) {
   ).replace(
     /import ['"](\.[^'"]*?)['"];/g,
     (match, importPath) => {
-      if (!importPath.endsWith('.js') && !importPath.includes('/')) {
+      if (!importPath.endsWith('.js')) {
         return `import '${importPath}.js';`;
       }
       return match;
