@@ -23,8 +23,9 @@ import {
   getCompassRadiusState,
   startDrawingFromSelectedElement
 } from '../src/index';
+import { P5Instance } from '../src/types/p5';
 
-interface P5Instance {
+interface MockP5Instance {
   createCanvas: jest.Mock;
   background: jest.Mock;
   clear: jest.Mock;
@@ -62,7 +63,7 @@ describe('Hello World', () => {
 });
 
 describe('p5.js integration', () => {
-  let p: P5Instance;
+  let p: MockP5Instance;
 
   beforeEach(() => {
     p = {

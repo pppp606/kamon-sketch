@@ -12,10 +12,14 @@ export interface RadiusState {
 }
 
 export class CompassRadiusState {
+  private static readonly MIN_RADIUS_PX = 1
+  private static readonly MAX_RADIUS_PX = 10000
+  
   private currentRadius: number
   private lastRadius: number
   private worldConverter?: WorldCoordinateConverter
   private storageKey: string
+  private readonly defaultRadius: number
 
   constructor(
     worldConverter?: WorldCoordinateConverter,
@@ -24,6 +28,7 @@ export class CompassRadiusState {
   ) {
     this.worldConverter = worldConverter
     this.storageKey = storageKey
+    this.defaultRadius = defaultRadius
     
     // Load from localStorage or use defaults
     const savedState = this.loadFromStorage()
@@ -31,7 +36,7 @@ export class CompassRadiusState {
       this.currentRadius = this.clampRadius(savedState.currentRadius)
       this.lastRadius = this.clampRadius(savedState.lastRadius)
     } else {
-      this.currentRadius = this.clampRadius(defaultRadius)
+      this.currentRadius = this.clampRadius(this.defaultRadius)
       this.lastRadius = this.currentRadius
     }
   }
@@ -121,20 +126,20 @@ export class CompassRadiusState {
   private clampRadius(radius: number): number {
     // Handle NaN
     if (isNaN(radius)) {
-      return 1
+      return CompassRadiusState.MIN_RADIUS_PX
     }
     
     // Handle Infinity
     if (radius === Infinity) {
-      return 10000
+      return CompassRadiusState.MAX_RADIUS_PX
     }
     
-    if (radius === -Infinity || radius < 1) {
-      return 1
+    if (radius === -Infinity || radius < CompassRadiusState.MIN_RADIUS_PX) {
+      return CompassRadiusState.MIN_RADIUS_PX
     }
     
-    if (radius > 10000) {
-      return 10000
+    if (radius > CompassRadiusState.MAX_RADIUS_PX) {
+      return CompassRadiusState.MAX_RADIUS_PX
     }
     
     return radius
@@ -168,6 +173,8 @@ export class CompassRadiusState {
 
   private saveToStorage(): void {
     try {
+      if (typeof localStorage === 'undefined') return
+      
       const state: RadiusState = {
         currentRadius: this.currentRadius,
         lastRadius: this.lastRadius
@@ -181,6 +188,8 @@ export class CompassRadiusState {
 
   private loadFromStorage(): RadiusState | null {
     try {
+      if (typeof localStorage === 'undefined') return null
+      
       const stored = localStorage.getItem(this.storageKey)
       if (!stored) {
         return null
@@ -192,7 +201,7 @@ export class CompassRadiusState {
       if (typeof parsed.currentRadius === 'number') {
         return {
           currentRadius: parsed.currentRadius,
-          lastRadius: typeof parsed.lastRadius === 'number' ? parsed.lastRadius : 50
+          lastRadius: typeof parsed.lastRadius === 'number' ? parsed.lastRadius : this.defaultRadius
         }
       }
       

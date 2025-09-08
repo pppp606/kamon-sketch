@@ -31,6 +31,7 @@ export function setDrawingMode(mode: 'compass' | 'line' | 'fill'): void {
     compassArc.reset();
   }
   currentLine = null;
+  isInShiftRadiusMode = false; // Clear Shift radius mode state
 }
 
 export function getDrawingMode(): 'compass' | 'line' | 'fill' {
@@ -84,7 +85,7 @@ export function draw(p: P5Instance): void {
   
   // Draw selection highlight
   if (selection) {
-    selection.drawHighlight(p as Parameters<typeof selection.drawHighlight>[0]);
+    selection.drawHighlight(p);
   }
 }
 
