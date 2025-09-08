@@ -18,6 +18,7 @@ let compassRadiusState: CompassRadiusState;
 
 // Keyboard state
 let isShiftPressed = false;
+let isInShiftRadiusMode = false; // Track if we're in Shift+click radius setting mode
 
 export function hello(): string {
   return 'Hello World';
@@ -102,34 +103,37 @@ export function mousePressed(p: P5Instance): void {
       selection.setSelectedElement(null); // Clear selection when starting new compass arc
       compassArc.setCenter(p.mouseX, p.mouseY);
       
-      // Check if normal click (use stored radius) or Shift+click (set new radius)
-      if (!isShiftPressed) {
-        // Normal click: use stored radius from CompassRadiusState
-        const currentRadius = compassRadiusState.getCurrentRadius();
-        compassArc.setRadiusDistance(currentRadius);
-        // Immediately start drawing
-        compassArc.startDrawing();
-        compassArc.updateDrawing(p.mouseX, p.mouseY);
+      // Check if this is Shift+click for radius setting mode
+      if (isShiftPressed) {
+        isInShiftRadiusMode = true;
+      } else {
+        isInShiftRadiusMode = false;
       }
-      // If Shift+click, stay in CENTER_SET state to wait for radius point click
+      
+      // Always stay in CENTER_SET state after setting center
+      // Both normal click and Shift+click wait for second click
       return;
     } else if (state === 'CENTER_SET') {
       selection.setSelectedElement(null); // Clear selection when setting radius
       
-      if (isShiftPressed) {
+      if (isShiftPressed || isInShiftRadiusMode) {
         // Shift+click: set new radius point and update stored radius
         compassArc.setRadius(p.mouseX, p.mouseY);
         const newRadius = compassArc.getRadius();
         compassRadiusState.updateRadius(newRadius);
         
-        // Check if mouse is being dragged to start drawing immediately
-        // If not dragging, this is just radius setting
+        // Clear preview and exit Shift radius mode
+        compassArc.clearPreview();
+        isInShiftRadiusMode = false;
+        
+        // Start drawing
         compassArc.startDrawing();
         compassArc.updateDrawing(p.mouseX, p.mouseY);
       } else {
         // Normal click after center set: use current stored radius
         const currentRadius = compassRadiusState.getCurrentRadius();
         compassArc.setRadiusDistance(currentRadius);
+        // Start drawing after setting radius with stored value
         compassArc.startDrawing();
         compassArc.updateDrawing(p.mouseX, p.mouseY);
       }
@@ -255,6 +259,7 @@ export function keyPressed(p: P5Instance): void {
   if (p.keyCode === p.ESCAPE) {
     if (drawingMode === 'compass' && compassArc) {
       compassArc.reset();
+      isInShiftRadiusMode = false; // Exit Shift radius mode
     }
     if (currentLine) {
       currentLine = null;
@@ -266,6 +271,16 @@ export function keyPressed(p: P5Instance): void {
 export function keyReleased(p: P5Instance): void {
   // Update shift key state
   isShiftPressed = p.keyIsDown(p.SHIFT);
+}
+
+export function mouseMoved(p: P5Instance): void {
+  // Update preview line during Shift+click radius setting mode
+  if (drawingMode === 'compass' && compassArc && isInShiftRadiusMode) {
+    const state = compassArc.getState();
+    if (state === 'CENTER_SET') {
+      compassArc.setPreviewPoint(p.mouseX, p.mouseY);
+    }
+  }
 }
 
 export function doubleClicked(p: P5Instance): void {
@@ -371,6 +386,7 @@ export function createSketch(): void {
     p.mousePressed = () => mousePressed(p);
     p.mouseDragged = () => mouseDragged(p);
     p.mouseReleased = () => mouseReleased();
+    p.mouseMoved = () => mouseMoved(p);
     p.doubleClicked = () => doubleClicked(p);
     p.keyPressed = () => keyPressed(p);
     p.keyReleased = () => keyReleased(p);

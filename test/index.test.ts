@@ -232,7 +232,7 @@ describe('p5.js integration', () => {
       mousePressed(p);
       
       const arc = getCompassArc();
-      expect(arc?.getState()).toBe('DRAWING');
+      expect(arc?.getState()).toBe('CENTER_SET'); // Now waits for second click
       
       setDrawingMode('line');
       expect(arc?.getState()).toBe('IDLE');
@@ -257,7 +257,7 @@ describe('p5.js integration', () => {
       setDrawingMode('compass');
     });
 
-    test('should set center point and immediately start drawing on first mouse press (normal click)', () => {
+    test('should set center point on first mouse press and wait for second click', () => {
       p.mouseX = 100;
       p.mouseY = 150;
       
@@ -265,13 +265,19 @@ describe('p5.js integration', () => {
       
       const arc = getCompassArc();
       expect(arc?.getCenterPoint()).toEqual({ x: 100, y: 150 });
-      // With new radius feature, normal click immediately starts drawing using stored radius
-      expect(arc?.getState()).toBe('DRAWING');
+      // Now waits for second click before starting drawing
+      expect(arc?.getState()).toBe('CENTER_SET');
     });
 
-    test('should use stored radius on normal click', () => {
+    test('should use stored radius on second normal click', () => {
+      // First click - set center
       p.mouseX = 100;
       p.mouseY = 150;
+      mousePressed(p);
+      
+      // Second click - use stored radius and start drawing
+      p.mouseX = 200;
+      p.mouseY = 200;
       mousePressed(p);
       
       const arc = getCompassArc();
