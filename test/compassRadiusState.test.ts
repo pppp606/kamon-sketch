@@ -48,6 +48,9 @@ describe('CompassRadiusState', () => {
     localStorageMock.removeItem.mockClear()
     mockWorldCoordinates.pixelsToWorld.mockClear()
     mockWorldCoordinates.worldToPixels.mockClear()
+    
+    // Ensure mock returns null for any key initially
+    localStorageMock.getItem.mockReturnValue(null)
   })
 
   afterEach(() => {
@@ -591,7 +594,14 @@ describe('CompassRadiusState', () => {
     })
 
     it('should use custom storage key if provided', () => {
+      // Ensure clean state with unique key
+      localStorageMock.__resetStore()
+      localStorageMock.setItem.mockClear()
+      
       compassRadiusState = new CompassRadiusState(undefined, 50, 'unique_custom_key')
+      expect(compassRadiusState.getCurrentRadius()).toBe(50)
+      expect(compassRadiusState.getLastRadius()).toBe(50)
+      
       compassRadiusState.updateRadius(80)
 
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
