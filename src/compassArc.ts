@@ -14,6 +14,10 @@ interface P5DrawingContext {
   line(x1: number, y1: number, x2: number, y2: number): void;
   circle(x: number, y: number, d: number): void;
   arc(x: number, y: number, w: number, h: number, start: number, stop: number): void;
+  drawingContext: {
+    setLineDash: (dash: number[]) => void;
+    lineDashOffset: number;
+  };
 }
 
 export class CompassArc {
@@ -23,6 +27,7 @@ export class CompassArc {
   private state: ArcState = 'IDLE'
   private lastAngle: number | null = null
   private accumulatedAngle = 0
+  private previewPoint: Point | null = null
 
   getCenterPoint(): Point | null {
     return this.centerPoint
@@ -52,6 +57,15 @@ export class CompassArc {
     this.state = 'RADIUS_SET'
   }
 
+  setRadiusDistance(radius: number): void {
+    if (!this.centerPoint) {
+      throw new Error('Center point must be set before setting radius')
+    }
+    // Set radius point at horizontal distance from center (for simplicity)
+    this.radiusPoint = { x: this.centerPoint.x + radius, y: this.centerPoint.y }
+    this.state = 'RADIUS_SET'
+  }
+
   startDrawing(): void {
     if (this.state !== 'RADIUS_SET') {
       throw new Error('Radius must be set before drawing')
@@ -75,6 +89,18 @@ export class CompassArc {
     const dx = this.radiusPoint.x - this.centerPoint.x
     const dy = this.radiusPoint.y - this.centerPoint.y
     return Math.sqrt(dx * dx + dy * dy)
+  }
+
+  setPreviewPoint(x: number, y: number): void {
+    this.previewPoint = { x, y }
+  }
+
+  getPreviewPoint(): Point | null {
+    return this.previewPoint
+  }
+
+  clearPreview(): void {
+    this.previewPoint = null
   }
 
   private calculateAngle(point: Point): number {
@@ -122,6 +148,18 @@ export class CompassArc {
 
     if (this.state === 'CENTER_SET') {
       p.point(this.centerPoint.x, this.centerPoint.y)
+      
+      // Draw preview line if preview point is set (during Shift+click radius setting)
+      if (this.previewPoint) {
+        p.push()
+        // Set up dashed line style
+        p.strokeWeight(1)
+        p.stroke(100, 100, 100) // Gray color
+        p.drawingContext.setLineDash([5, 5]) // 5px dash, 5px gap
+        p.line(this.centerPoint.x, this.centerPoint.y, this.previewPoint.x, this.previewPoint.y)
+        p.drawingContext.setLineDash([]) // Reset to solid line
+        p.pop()
+      }
     } else if (this.state === 'RADIUS_SET' && this.radiusPoint) {
       p.point(this.centerPoint.x, this.centerPoint.y)
       p.line(this.centerPoint.x, this.centerPoint.y, this.radiusPoint.x, this.radiusPoint.y)
@@ -146,6 +184,7 @@ export class CompassArc {
     this.radiusPoint = null
     this.currentPoint = null
     this.state = 'IDLE'
+    this.previewPoint = null
     this.resetAngleTracking()
   }
 

@@ -4,6 +4,7 @@ import { CompassArc } from './compassArc';
 import { Line } from './line';
 import { Selection, SelectableElement } from './selection';
 import { Fill } from './fill';
+import { CompassRadiusState } from './compassRadiusState';
 import { P5Instance } from './types/p5';
 
 let compassArc: CompassArc;
@@ -13,6 +14,11 @@ let currentLine: Line | null = null;
 let drawingMode: 'compass' | 'line' | 'fill' = 'line'; // Default to line mode for MVP
 let selection: Selection;
 let fill: Fill;
+let compassRadiusState: CompassRadiusState;
+
+// Keyboard state
+let isShiftPressed = false;
+let isInShiftRadiusMode = false; // Track if we're in Shift+click radius setting mode
 
 export function hello(): string {
   return 'Hello World';
@@ -25,6 +31,7 @@ export function setDrawingMode(mode: 'compass' | 'line' | 'fill'): void {
     compassArc.reset();
   }
   currentLine = null;
+  isInShiftRadiusMode = false; // Clear Shift radius mode state
 }
 
 export function getDrawingMode(): 'compass' | 'line' | 'fill' {
@@ -49,6 +56,7 @@ export function setup(p: P5Instance): void {
   currentLine = null;
   selection = new Selection();
   fill = new Fill();
+  compassRadiusState = new CompassRadiusState();
 }
 
 export function draw(p: P5Instance): void {
@@ -77,7 +85,7 @@ export function draw(p: P5Instance): void {
   
   // Draw selection highlight
   if (selection) {
-    selection.drawHighlight(p as Parameters<typeof selection.drawHighlight>[0]);
+    selection.drawHighlight(p);
   }
 }
 
@@ -88,20 +96,48 @@ export function mousePressed(p: P5Instance): void {
     return;
   }
   
-  // Handle compass arc drawing first (it has precedence when in progress)
+  // Handle compass arc drawing with Shift+click support
   if (drawingMode === 'compass' && compassArc) {
     const state = compassArc.getState();
     
     if (state === 'IDLE') {
       selection.setSelectedElement(null); // Clear selection when starting new compass arc
       compassArc.setCenter(p.mouseX, p.mouseY);
+      
+      // Check if this is Shift+click for radius setting mode
+      if (isShiftPressed) {
+        isInShiftRadiusMode = true;
+      } else {
+        isInShiftRadiusMode = false;
+      }
+      
+      // Always stay in CENTER_SET state after setting center
+      // Both normal click and Shift+click wait for second click
       return;
     } else if (state === 'CENTER_SET') {
       selection.setSelectedElement(null); // Clear selection when setting radius
-      compassArc.setRadius(p.mouseX, p.mouseY);
-      // Immediately start drawing after setting radius
-      compassArc.startDrawing();
-      compassArc.updateDrawing(p.mouseX, p.mouseY);
+      
+      if (isShiftPressed || isInShiftRadiusMode) {
+        // Shift+click: set new radius point and update stored radius
+        compassArc.setRadius(p.mouseX, p.mouseY);
+        const newRadius = compassArc.getRadius();
+        compassRadiusState.updateRadius(newRadius);
+        
+        // Clear preview and exit Shift radius mode
+        compassArc.clearPreview();
+        isInShiftRadiusMode = false;
+        
+        // Start drawing
+        compassArc.startDrawing();
+        compassArc.updateDrawing(p.mouseX, p.mouseY);
+      } else {
+        // Normal click after center set: use current stored radius
+        const currentRadius = compassRadiusState.getCurrentRadius();
+        compassArc.setRadiusDistance(currentRadius);
+        // Start drawing after setting radius with stored value
+        compassArc.startDrawing();
+        compassArc.updateDrawing(p.mouseX, p.mouseY);
+      }
       return;
     }
     // If state is DRAWING, continue to selection logic
@@ -130,6 +166,14 @@ export function mousePressed(p: P5Instance): void {
     
     if (distance <= SELECTION_THRESHOLD) {
       selection.setSelectedElement(closestElement);
+      
+      // Extract radius from selected element and update CompassRadiusState
+      if (closestElement.type === 'line') {
+        compassRadiusState.setRadiusFromShape(closestElement.element as Line);
+      } else if (closestElement.type === 'arc') {
+        compassRadiusState.setRadiusFromShape(closestElement.element as CompassArc);
+      }
+      
       return; // Don't proceed with drawing when selecting
     }
   }
@@ -198,6 +242,46 @@ export function setFillColor(color: { r: number; g: number; b: number }) {
 
 export function getFillColor() {
   return fill ? fill.getFillColor() : { r: 0, g: 0, b: 0 };
+}
+
+export function getIsShiftPressed(): boolean {
+  return isShiftPressed;
+}
+
+export function getCompassRadiusState(): CompassRadiusState {
+  return compassRadiusState;
+}
+
+export function keyPressed(p: P5Instance): void {
+  // Update shift key state
+  isShiftPressed = p.keyIsDown(p.SHIFT);
+  
+  // Handle Escape key for canceling operations
+  if (p.keyCode === p.ESCAPE) {
+    if (drawingMode === 'compass' && compassArc) {
+      compassArc.reset();
+      isInShiftRadiusMode = false; // Exit Shift radius mode
+    }
+    if (currentLine) {
+      currentLine = null;
+    }
+    selection.setSelectedElement(null);
+  }
+}
+
+export function keyReleased(p: P5Instance): void {
+  // Update shift key state
+  isShiftPressed = p.keyIsDown(p.SHIFT);
+}
+
+export function mouseMoved(p: P5Instance): void {
+  // Update preview line during Shift+click radius setting mode
+  if (drawingMode === 'compass' && compassArc && isInShiftRadiusMode) {
+    const state = compassArc.getState();
+    if (state === 'CENTER_SET') {
+      compassArc.setPreviewPoint(p.mouseX, p.mouseY);
+    }
+  }
 }
 
 export function doubleClicked(p: P5Instance): void {
@@ -293,7 +377,6 @@ function setupModeButtons(): void {
 export function createSketch(): void {
   // Check if p5 is available globally (browser environment)
   if (typeof p5 === 'undefined') {
-    console.warn('p5.js is not loaded. Skipping sketch creation.');
     return;
   }
   
@@ -303,7 +386,10 @@ export function createSketch(): void {
     p.mousePressed = () => mousePressed(p);
     p.mouseDragged = () => mouseDragged(p);
     p.mouseReleased = () => mouseReleased();
+    p.mouseMoved = () => mouseMoved(p);
     p.doubleClicked = () => doubleClicked(p);
+    p.keyPressed = () => keyPressed(p);
+    p.keyReleased = () => keyReleased(p);
   });
 }
 

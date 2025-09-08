@@ -20,7 +20,14 @@ export interface P5Instance {
   mousePressed?: () => void
   mouseDragged?: () => void
   mouseReleased?: () => void
+  mouseMoved?: () => void
   doubleClicked?: () => void
+  keyPressed?: () => void
+  keyReleased?: () => void
+  keyIsDown: (key: number) => boolean
+  keyCode: number
+  SHIFT: number
+  ESCAPE: number
   setup?: () => void
   draw?: () => void
   width: number
@@ -32,4 +39,8 @@ export interface P5Instance {
   updatePixels: () => void
   get: (x: number, y: number) => number[]
   set: (x: number, y: number, color: number[]) => void
+  drawingContext: {
+    setLineDash: (dash: number[]) => void
+    lineDashOffset: number
+  }
 }
