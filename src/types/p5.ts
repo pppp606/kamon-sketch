@@ -21,6 +21,12 @@ export interface P5Instance {
   mouseDragged?: () => void
   mouseReleased?: () => void
   doubleClicked?: () => void
+  keyPressed?: () => void
+  keyReleased?: () => void
+  keyIsDown: (key: number) => boolean
+  keyCode: number
+  SHIFT: number
+  ESCAPE: number
   setup?: () => void
   draw?: () => void
   width: number

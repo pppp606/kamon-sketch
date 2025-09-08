@@ -52,6 +52,15 @@ export class CompassArc {
     this.state = 'RADIUS_SET'
   }
 
+  setRadiusDistance(radius: number): void {
+    if (!this.centerPoint) {
+      throw new Error('Center point must be set before setting radius')
+    }
+    // Set radius point at horizontal distance from center (for simplicity)
+    this.radiusPoint = { x: this.centerPoint.x + radius, y: this.centerPoint.y }
+    this.state = 'RADIUS_SET'
+  }
+
   startDrawing(): void {
     if (this.state !== 'RADIUS_SET') {
       throw new Error('Radius must be set before drawing')
