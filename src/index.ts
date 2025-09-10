@@ -306,11 +306,11 @@ export function performUndo(): void {
       if (selection) {
         selection.setSelectedElement(null);
       }
-      
-      // Update button states
-      if (undoRedoButtons) {
-        undoRedoButtons.updateButtonStates();
-      }
+    }
+    
+    // Always update button states after undo attempt, regardless of result
+    if (undoRedoButtons) {
+      undoRedoButtons.updateButtonStates();
     }
   }
 }
@@ -333,11 +333,11 @@ export function performRedo(): void {
       if (selection) {
         selection.setSelectedElement(null);
       }
-      
-      // Update button states
-      if (undoRedoButtons) {
-        undoRedoButtons.updateButtonStates();
-      }
+    }
+    
+    // Always update button states after redo attempt, regardless of result
+    if (undoRedoButtons) {
+      undoRedoButtons.updateButtonStates();
     }
   }
 }

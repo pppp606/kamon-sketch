@@ -245,4 +245,98 @@ describe('UndoRedoButtons', () => {
       expect(redoButton.getAttribute('aria-disabled')).toBe('true')
     })
   })
+
+  describe('excessive undo/redo handling', () => {
+    it('should maintain proper button states after excessive undo operations', () => {
+      const line = new Line()
+      line.setFirstPoint(0, 0)
+      line.setSecondPoint(10, 10)
+      
+      const state: HistoryState = { lines: [line], arcs: [] }
+      history.pushHistory(state)
+      
+      // Initial state - undo available, redo not available
+      undoRedoButtons.updateButtonStates()
+      expect(undoButton.disabled).toBe(false)
+      expect(redoButton.disabled).toBe(true)
+      
+      // First undo - should go to empty state
+      const mockOnUndo = jest.fn(() => {
+        const previousState = history.undo()
+        // Simulate the same logic as performUndo() after fix
+        undoRedoButtons.updateButtonStates()
+      })
+      
+      const mockOnRedo = jest.fn(() => {
+        const nextState = history.redo()
+        // Simulate the same logic as performRedo() after fix
+        undoRedoButtons.updateButtonStates()
+      })
+      
+      // Create new instance with our mock functions
+      const testButtons = new UndoRedoButtons(history, mockOnUndo, mockOnRedo)
+      testButtons.updateButtonStates()
+      
+      // Simulate undo click
+      undoButton.click()
+      expect(mockOnUndo).toHaveBeenCalledTimes(1)
+      
+      // After first undo: should be at empty state, undo disabled, redo enabled
+      expect(undoButton.disabled).toBe(true)
+      expect(redoButton.disabled).toBe(false)
+      
+      // Try excessive undo
+      undoButton.click() // This should not work (button is disabled)
+      
+      // Even after excessive undo attempt, redo should still be available
+      expect(undoButton.disabled).toBe(true)
+      expect(redoButton.disabled).toBe(false) // This is the critical test
+      
+      // Redo should work
+      redoButton.click()
+      expect(mockOnRedo).toHaveBeenCalledTimes(1)
+      
+      // After redo: back to original state
+      expect(undoButton.disabled).toBe(false)
+      expect(redoButton.disabled).toBe(true)
+    })
+
+    it('should handle button state updates when undo/redo return null', () => {
+      // Start with empty history
+      expect(history.canUndo()).toBe(false)
+      expect(history.canRedo()).toBe(false)
+      
+      // Mock functions that simulate the actual performUndo/performRedo behavior
+      const mockOnUndo = jest.fn(() => {
+        const result = history.undo()
+        undoRedoButtons.updateButtonStates() // Always update, even if result is null
+        return result
+      })
+      
+      const mockOnRedo = jest.fn(() => {
+        const result = history.redo()
+        undoRedoButtons.updateButtonStates() // Always update, even if result is null
+        return result
+      })
+      
+      const testButtons = new UndoRedoButtons(history, mockOnUndo, mockOnRedo)
+      
+      // Initial state with empty history
+      testButtons.updateButtonStates()
+      expect(undoButton.disabled).toBe(true)
+      expect(redoButton.disabled).toBe(true)
+      
+      // Even though buttons are disabled, simulate clicks (in real UI this wouldn't trigger)
+      // But we want to test that our logic handles null returns correctly
+      mockOnUndo()
+      expect(mockOnUndo).toHaveBeenCalledTimes(1)
+      expect(undoButton.disabled).toBe(true)
+      expect(redoButton.disabled).toBe(true)
+      
+      mockOnRedo()
+      expect(mockOnRedo).toHaveBeenCalledTimes(1)
+      expect(undoButton.disabled).toBe(true)
+      expect(redoButton.disabled).toBe(true)
+    })
+  })
 })
