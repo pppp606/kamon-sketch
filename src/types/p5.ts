@@ -28,6 +28,8 @@ export interface P5Instance {
   keyCode: number
   SHIFT: number
   ESCAPE: number
+  CONTROL?: number
+  COMMAND?: number
   setup?: () => void
   draw?: () => void
   width: number
