@@ -46,6 +46,14 @@
         .mode-btn.active:hover {
             background-color: #45a049;
         }
+        .mode-btn.disabled {
+            background-color: #888;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .mode-btn.disabled:hover {
+            background-color: #888;
+        }
         #canvas-container {
             margin: 0;
             padding: 0;
@@ -59,6 +67,8 @@
             <button id="line-btn" class="mode-btn active">線 (Line)</button>
             <button id="compass-btn" class="mode-btn">円弧 (Arc)</button>
             <button id="fill-btn" class="mode-btn">塗りつぶし (Fill)</button>
+            <button id="undo-btn" class="mode-btn disabled" title="Undo (Ctrl+Z)">↶ Undo</button>
+            <button id="redo-btn" class="mode-btn disabled" title="Redo (Ctrl+Y)">↷ Redo</button>
         </div>
     </div>
     <div id="canvas-container"></div>
