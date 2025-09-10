@@ -5,6 +5,9 @@ import { Line } from './line';
 import { Selection, SelectableElement } from './selection';
 import { Fill } from './fill';
 import { CompassRadiusState } from './compassRadiusState';
+import { History, HistoryState } from './history';
+import { KeyboardShortcuts } from './keyboardShortcuts';
+import { UndoRedoButtons } from './undoRedoButtons';
 import { P5Instance } from './types/p5';
 
 let compassArc: CompassArc;
@@ -15,6 +18,9 @@ let drawingMode: 'compass' | 'line' | 'fill' = 'line'; // Default to line mode f
 let selection: Selection;
 let fill: Fill;
 let compassRadiusState: CompassRadiusState;
+let history: History;
+let keyboardShortcuts: KeyboardShortcuts;
+let undoRedoButtons: UndoRedoButtons;
 
 // Keyboard state
 let isShiftPressed = false;
@@ -57,6 +63,14 @@ export function setup(p: P5Instance): void {
   selection = new Selection();
   fill = new Fill();
   compassRadiusState = new CompassRadiusState();
+  
+  // Initialize history system
+  history = new History();
+  keyboardShortcuts = new KeyboardShortcuts(history, performUndo, performRedo);
+  undoRedoButtons = new UndoRedoButtons(history, performUndo, performRedo);
+  
+  // Save initial empty state
+  saveCurrentState();
 }
 
 export function draw(p: P5Instance): void {
@@ -191,6 +205,10 @@ export function mousePressed(p: P5Instance): void {
       // Set the second point and complete the line
       currentLine.setSecondPoint(p.mouseX, p.mouseY);
       lines.push(currentLine);
+      
+      // Save state after completing a line
+      saveCurrentState();
+      
       // Start a new line immediately
       currentLine = new Line();
       currentLine.setFirstPoint(p.mouseX, p.mouseY);
@@ -214,6 +232,9 @@ export function mouseReleased(): void {
       const completedArc = compassArc.createCompletedCopy();
       if (completedArc) {
         completedArcs.push(completedArc);
+        
+        // Save state after completing an arc
+        saveCurrentState();
       }
       // Reset to start a new arc
       compassArc.reset();
@@ -252,9 +273,83 @@ export function getCompassRadiusState(): CompassRadiusState {
   return compassRadiusState;
 }
 
+export function saveCurrentState(): void {
+  if (history) {
+    const currentState: HistoryState = {
+      lines: [...lines], // Create a copy of the current lines
+      arcs: [...completedArcs] // Create a copy of the current completed arcs
+    };
+    history.pushHistory(currentState);
+    
+    // Update button states after saving
+    if (undoRedoButtons) {
+      undoRedoButtons.updateButtonStates();
+    }
+  }
+}
+
+export function performUndo(): void {
+  if (history) {
+    const previousState = history.undo();
+    if (previousState) {
+      // Restore the previous state
+      lines = [...previousState.lines];
+      completedArcs = [...previousState.arcs];
+      
+      // Clear any current drawing operations
+      currentLine = null;
+      if (compassArc) {
+        compassArc.reset();
+      }
+      
+      // Clear selection
+      if (selection) {
+        selection.setSelectedElement(null);
+      }
+      
+      // Update button states
+      if (undoRedoButtons) {
+        undoRedoButtons.updateButtonStates();
+      }
+    }
+  }
+}
+
+export function performRedo(): void {
+  if (history) {
+    const nextState = history.redo();
+    if (nextState) {
+      // Restore the next state
+      lines = [...nextState.lines];
+      completedArcs = [...nextState.arcs];
+      
+      // Clear any current drawing operations
+      currentLine = null;
+      if (compassArc) {
+        compassArc.reset();
+      }
+      
+      // Clear selection
+      if (selection) {
+        selection.setSelectedElement(null);
+      }
+      
+      // Update button states
+      if (undoRedoButtons) {
+        undoRedoButtons.updateButtonStates();
+      }
+    }
+  }
+}
+
 export function keyPressed(p: P5Instance): void {
   // Update shift key state
   isShiftPressed = p.keyIsDown(p.SHIFT);
+  
+  // Handle keyboard shortcuts for undo/redo
+  if (keyboardShortcuts) {
+    keyboardShortcuts.handleKeyPressed(p);
+  }
   
   // Handle Escape key for canceling operations
   if (p.keyCode === p.ESCAPE) {
