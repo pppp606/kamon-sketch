@@ -34,15 +34,18 @@ export class History {
   }
 
   undo(): HistoryState | null {
-    if (this.historyIndex <= 0) {
-      if (this.historyIndex === 0) {
-        // Return to state before first entry (empty state)
-        this.historyIndex = -1
-        return { lines: [], arcs: [] }
-      }
-      return null // Already at beginning
+    if (this.historyIndex < 0) {
+      // Already at empty state, cannot undo further
+      return null
     }
     
+    if (this.historyIndex === 0) {
+      // Move from first entry to empty state
+      this.historyIndex = -1
+      return { lines: [], arcs: [] }
+    }
+    
+    // Move to previous state in history
     this.historyIndex--
     return this.history[this.historyIndex] || null
   }

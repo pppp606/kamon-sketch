@@ -104,6 +104,50 @@ describe('History Edge Cases', () => {
       expect(redoResult2).toEqual(state2)
     })
 
+    it('should properly stop at empty state and not allow further undo', () => {
+      const line = new Line()
+      line.setFirstPoint(0, 0)
+      line.setSecondPoint(10, 10)
+      
+      const state1: HistoryState = { lines: [line], arcs: [] }
+      history.pushHistory(state1)
+      
+      // Initial state: can undo, cannot redo
+      expect(history.getHistoryIndex()).toBe(0)
+      expect(history.canUndo()).toBe(true)
+      expect(history.canRedo()).toBe(false)
+      
+      // First undo: go to empty state
+      const undo1 = history.undo()
+      expect(undo1).toEqual({ lines: [], arcs: [] })
+      expect(history.getHistoryIndex()).toBe(-1)
+      expect(history.canUndo()).toBe(false) // Cannot undo from empty state
+      expect(history.canRedo()).toBe(true)
+      
+      // Try to undo from empty state - should do nothing
+      const undo2 = history.undo()
+      expect(undo2).toBeNull() // Should return null
+      expect(history.getHistoryIndex()).toBe(-1) // Should stay at -1
+      expect(history.canUndo()).toBe(false) // Still cannot undo
+      expect(history.canRedo()).toBe(true) // Redo should still be available
+      
+      // Multiple attempts should all fail
+      for (let i = 0; i < 3; i++) {
+        const result = history.undo()
+        expect(result).toBeNull()
+        expect(history.getHistoryIndex()).toBe(-1)
+        expect(history.canUndo()).toBe(false)
+        expect(history.canRedo()).toBe(true)
+      }
+      
+      // Redo should still work after any number of failed undo attempts
+      const redo1 = history.redo()
+      expect(redo1).toEqual(state1)
+      expect(history.getHistoryIndex()).toBe(0)
+      expect(history.canUndo()).toBe(true)
+      expect(history.canRedo()).toBe(false)
+    })
+
     it('should maintain proper state when alternating excessive undo and redo', () => {
       const line = new Line()
       line.setFirstPoint(0, 0)
