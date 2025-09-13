@@ -6,34 +6,28 @@ export interface HistoryState {
   arcs: CompassArc[]
 }
 
-interface SerializedHistoryData {
-  history: HistoryState[]
-  historyIndex: number
-}
-
-const HISTORY_STORAGE_KEY = 'drawing-history'
-
 export class History {
   private history: HistoryState[] = []
   private historyIndex: number = -1
 
   constructor() {
-    // Clear any existing localStorage data and start fresh on reload
-    this.removeFromStorage()
-    // Don't load from storage - always start fresh on reload
-    // this.loadFromStorage()
+    // Intentionally stateless across sessions - no persistence needed
   }
 
   pushHistory(state: HistoryState): void {
     // Remove all states after current index (clear redo stack)
     this.history = this.history.slice(0, this.historyIndex + 1)
     
-    // Add new state
-    this.history.push(state)
+    // Add new state with deep copy to prevent history pollution
+    this.history.push(this.deepCopyState(state))
     this.historyIndex = this.history.length - 1
-    
-    // Don't save to localStorage - always start fresh on reload
-    // this.saveToStorage()
+  }
+
+  private deepCopyState(state: HistoryState): HistoryState {
+    return {
+      lines: state.lines.map(line => Line.fromJSON(line.toJSON())),
+      arcs: state.arcs.map(arc => CompassArc.fromJSON(arc.toJSON()))
+    }
   }
 
   undo(): HistoryState | null {
@@ -88,60 +82,5 @@ export class History {
   clearHistory(): void {
     this.history = []
     this.historyIndex = -1
-    this.removeFromStorage()
-  }
-
-  private saveToStorage(): void {
-    if (typeof localStorage === 'undefined') {
-      return // Skip in server-side environment
-    }
-
-    try {
-      const data: SerializedHistoryData = {
-        history: this.history,
-        historyIndex: this.historyIndex
-      }
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(data))
-    } catch (error) {
-      console.warn('Failed to save history to localStorage:', error)
-    }
-  }
-
-  private loadFromStorage(): void {
-    if (typeof localStorage === 'undefined') {
-      return // Skip in server-side environment
-    }
-
-    try {
-      const savedData = localStorage.getItem(HISTORY_STORAGE_KEY)
-      if (savedData) {
-        const data: SerializedHistoryData = JSON.parse(savedData)
-        
-        // Restore history states with proper class instances
-        this.history = (data.history || []).map(state => ({
-          lines: state.lines.map((lineData: unknown) => Line.fromJSON(lineData as Parameters<typeof Line.fromJSON>[0])),
-          arcs: state.arcs.map((arcData: unknown) => CompassArc.fromJSON(arcData as Parameters<typeof CompassArc.fromJSON>[0]))
-        }))
-        
-        this.historyIndex = data.historyIndex ?? -1
-      }
-    } catch (error) {
-      console.warn('Failed to load history from localStorage:', error)
-      // Continue with empty history if loading fails
-      this.history = []
-      this.historyIndex = -1
-    }
-  }
-
-  private removeFromStorage(): void {
-    if (typeof localStorage === 'undefined') {
-      return // Skip in server-side environment
-    }
-
-    try {
-      localStorage.removeItem(HISTORY_STORAGE_KEY)
-    } catch (error) {
-      console.warn('Failed to remove history from localStorage:', error)
-    }
   }
 }

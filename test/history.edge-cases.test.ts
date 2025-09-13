@@ -18,35 +18,15 @@ describe('History Edge Cases', () => {
       const state1: HistoryState = { lines: [line], arcs: [] }
       history.pushHistory(state1)
       
-      console.log('After pushHistory:', {
-        historyLength: history.getHistoryLength(),
-        historyIndex: history.getHistoryIndex(),
-        canUndo: history.canUndo(),
-        canRedo: history.canRedo()
-      })
       
       // First undo should work (go to empty state)
       const undoResult1 = history.undo()
-      console.log('After first undo:', {
-        historyLength: history.getHistoryLength(),
-        historyIndex: history.getHistoryIndex(),
-        canUndo: history.canUndo(),
-        canRedo: history.canRedo(),
-        undoResult: undoResult1
-      })
       
       expect(undoResult1).toEqual({ lines: [], arcs: [] })
       expect(history.canRedo()).toBe(true)
       
       // Second undo should return null (no more to undo)
       const undoResult2 = history.undo()
-      console.log('After second undo (excessive):', {
-        historyLength: history.getHistoryLength(),
-        historyIndex: history.getHistoryIndex(),
-        canUndo: history.canUndo(),
-        canRedo: history.canRedo(),
-        undoResult: undoResult2
-      })
       
       expect(undoResult2).toBeNull()
       expect(history.canUndo()).toBe(false)
@@ -54,13 +34,6 @@ describe('History Edge Cases', () => {
       
       // Redo should still work after excessive undo
       const redoResult = history.redo()
-      console.log('After redo:', {
-        historyLength: history.getHistoryLength(),
-        historyIndex: history.getHistoryIndex(),
-        canUndo: history.canUndo(),
-        canRedo: history.canRedo(),
-        redoResult: redoResult
-      })
       
       expect(redoResult).toEqual(state1)
       expect(history.canUndo()).toBe(true)
@@ -86,12 +59,6 @@ describe('History Edge Cases', () => {
       // Try undoing more times than history length
       for (let i = 0; i < 5; i++) {
         const result = history.undo()
-        console.log(`Undo ${i + 1}:`, {
-          historyIndex: history.getHistoryIndex(),
-          canUndo: history.canUndo(),
-          canRedo: history.canRedo(),
-          result: result !== null ? 'state returned' : 'null'
-        })
       }
       
       // Should still be able to redo

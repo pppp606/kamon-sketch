@@ -6,17 +6,6 @@ describe('History', () => {
   let history: History
   
   beforeEach(() => {
-    // Mock localStorage before creating History instance
-    Object.defineProperty(global, 'localStorage', {
-      value: {
-        getItem: jest.fn().mockReturnValue(null),
-        setItem: jest.fn(),
-        removeItem: jest.fn()
-      },
-      writable: true,
-      configurable: true
-    })
-    
     history = new History()
   })
 
@@ -196,202 +185,49 @@ describe('History', () => {
     })
   })
 
-  describe('localStorage methods', () => {
-    // Create a mock localStorage for testing
-    let localStorageMock: { [key: string]: string }
-    
-    beforeEach(() => {
-      localStorageMock = {}
+  describe('deep copy behavior', () => {
+    it('should create deep copies to prevent history pollution', () => {
+      const originalLine = new Line()
+      originalLine.setFirstPoint(0, 0)
+      originalLine.setSecondPoint(10, 10)
       
-      // Mock localStorage
-      Object.defineProperty(global, 'localStorage', {
-        value: {
-          getItem: jest.fn((key: string) => localStorageMock[key] || null),
-          setItem: jest.fn((key: string, value: string) => {
-            localStorageMock[key] = value
-          }),
-          removeItem: jest.fn((key: string) => {
-            delete localStorageMock[key]
-          })
-        },
-        writable: true,
-        configurable: true
-      })
+      const originalState: HistoryState = {
+        lines: [originalLine],
+        arcs: []
+      }
       
-      // Create fresh history instance with clean localStorage mock
-      history = new History()
+      history.pushHistory(originalState)
+      
+      // Modify the original line after pushing to history
+      originalLine.setSecondPoint(20, 20)
+      
+      // The history should not be affected by changes to the original objects
+      const storedState = history.getCurrentState()
+      expect(storedState).not.toBeNull()
+      expect(storedState!.lines[0].getSecondPoint()).toEqual({ x: 10, y: 10 })
+      expect(storedState!.lines[0]).not.toBe(originalLine) // Different instance
     })
 
-    afterEach(() => {
-      // Clear mocks
-      jest.clearAllMocks()
-    })
-
-    describe('saveToStorage', () => {
-      it('should save history to localStorage when available', () => {
-        const line = new Line()
-        line.setFirstPoint(0, 0)
-        line.setSecondPoint(10, 10)
-        
-        const state: HistoryState = { lines: [line], arcs: [] }
-        history.pushHistory(state)
-        
-        // Access private method via any cast for testing
-        ;(history as any).saveToStorage()
-        
-        expect(localStorage.setItem).toHaveBeenCalledWith(
-          'drawing-history',
-          expect.stringContaining('"history"')
-        )
-        expect(localStorage.setItem).toHaveBeenCalledWith(
-          'drawing-history', 
-          expect.stringContaining('"historyIndex"')
-        )
-      })
-
-      it('should handle localStorage setItem errors gracefully', () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
-        
-        // Mock localStorage.setItem to throw error
-        ;(localStorage.setItem as jest.Mock).mockImplementation(() => {
-          throw new Error('Storage quota exceeded')
-        })
-        
-        const state: HistoryState = { lines: [], arcs: [] }
-        history.pushHistory(state)
-        
-        expect(() => (history as any).saveToStorage()).not.toThrow()
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Failed to save history to localStorage:', 
-          expect.any(Error)
-        )
-        
-        consoleSpy.mockRestore()
-      })
-
-      it('should skip saving when localStorage is undefined', () => {
-        // Mock undefined localStorage
-        Object.defineProperty(global, 'localStorage', {
-          value: undefined,
-          writable: true
-        })
-        
-        const state: HistoryState = { lines: [], arcs: [] }
-        history.pushHistory(state)
-        
-        expect(() => (history as any).saveToStorage()).not.toThrow()
-      })
-    })
-
-    describe('loadFromStorage', () => {
-      it('should load history from localStorage when available', () => {
-        const line = new Line()
-        line.setFirstPoint(5, 5)
-        line.setSecondPoint(15, 15)
-        
-        const arc = new CompassArc()
-        arc.setCenter(10, 10)
-        arc.setRadiusDistance(5)
-        
-        const mockData = {
-          history: [
-            { 
-              lines: [line.toJSON()],
-              arcs: [arc.toJSON()]
-            }
-          ],
-          historyIndex: 0
-        }
-        
-        // Override the localStorage mock for this test
-        ;(localStorage.getItem as jest.Mock).mockReturnValue(JSON.stringify(mockData))
-        
-        // Create new history instance to test loading
-        const newHistory = new History()
-        ;(newHistory as any).loadFromStorage()
-        
-        expect(newHistory.getHistoryLength()).toBe(1)
-        expect(newHistory.getHistoryIndex()).toBe(0)
-        expect(newHistory.canUndo()).toBe(true)
-        expect(newHistory.canRedo()).toBe(false)
-      })
-
-      it('should handle missing localStorage data', () => {
-        localStorageMock = {} // Empty storage
-        
-        const newHistory = new History()
-        ;(newHistory as any).loadFromStorage()
-        
-        expect(newHistory.getHistoryLength()).toBe(0)
-        expect(newHistory.getHistoryIndex()).toBe(-1)
-      })
-
-      it('should handle corrupted localStorage data', () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
-        
-        // Override localStorage mock to return invalid JSON
-        ;(localStorage.getItem as jest.Mock).mockReturnValue('invalid json')
-        
-        const newHistory = new History()
-        ;(newHistory as any).loadFromStorage()
-        
-        expect(newHistory.getHistoryLength()).toBe(0)
-        expect(newHistory.getHistoryIndex()).toBe(-1)
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Failed to load history from localStorage:',
-          expect.any(Error)
-        )
-        
-        consoleSpy.mockRestore()
-      })
-
-      it('should skip loading when localStorage is undefined', () => {
-        Object.defineProperty(global, 'localStorage', {
-          value: undefined,
-          writable: true
-        })
-        
-        const newHistory = new History()
-        expect(() => (newHistory as any).loadFromStorage()).not.toThrow()
-        expect(newHistory.getHistoryLength()).toBe(0)
-      })
-    })
-
-    describe('removeFromStorage', () => {
-      it('should remove history from localStorage when available', () => {
-        localStorageMock['drawing-history'] = 'some data'
-        
-        ;(history as any).removeFromStorage()
-        
-        expect(localStorage.removeItem).toHaveBeenCalledWith('drawing-history')
-        expect(localStorageMock['drawing-history']).toBeUndefined()
-      })
-
-      it('should handle localStorage removeItem errors gracefully', () => {
-        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
-        
-        ;(localStorage.removeItem as jest.Mock).mockImplementation(() => {
-          throw new Error('Storage access denied')
-        })
-        
-        expect(() => (history as any).removeFromStorage()).not.toThrow()
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Failed to remove history from localStorage:',
-          expect.any(Error)
-        )
-        
-        consoleSpy.mockRestore()
-      })
-
-      it('should skip removal when localStorage is undefined', () => {
-        Object.defineProperty(global, 'localStorage', {
-          value: undefined,
-          writable: true
-        })
-        
-        expect(() => (history as any).removeFromStorage()).not.toThrow()
-      })
+    it('should create deep copies of arcs', () => {
+      const originalArc = new CompassArc()
+      originalArc.setCenter(5, 5)
+      originalArc.setRadiusDistance(10)
+      
+      const originalState: HistoryState = {
+        lines: [],
+        arcs: [originalArc]
+      }
+      
+      history.pushHistory(originalState)
+      
+      // Modify the original arc after pushing to history
+      originalArc.setCenter(15, 15)
+      
+      // The history should not be affected
+      const storedState = history.getCurrentState()
+      expect(storedState).not.toBeNull()
+      expect(storedState!.arcs[0].getCenterPoint()).toEqual({ x: 5, y: 5 })
+      expect(storedState!.arcs[0]).not.toBe(originalArc) // Different instance
     })
   })
-
 })

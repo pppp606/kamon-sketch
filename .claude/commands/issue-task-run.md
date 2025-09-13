@@ -42,9 +42,11 @@ description: Github Issueからタスクを実行し、プルリクエスト作�
 
 2. **品質チェック** (コミット前必須):
    ```bash
+   npm run ci                      # 全CI品質チェック実行（typecheck + lint + test + build）
    npm run typecheck               # TypeScript型チェック
    npm run lint                    # ESLint準拠確認
    npm test                        # テスト実行
+   npm run test:coverage           # カバレッジ付きテスト実行
    ```
 
 3. **自動修正** (エラー発生時):
@@ -55,8 +57,14 @@ description: Github Issueからタスクを実行し、プルリクエスト作�
 
 **なぜ必須か**:
 - TypeScriptは事前コンパイルが必要
-- ブラウザでの実際の動作はテストだけでは検証できない
+- ブラウザでの実際の動作はテストだけでは検証できない  
 - ユーザー向けUIや描画機能は手動確認が不可欠
+- **CI/CDパイプライン**: GitHub ActionsのPR Checksで同じ品質基準を自動実行
+  - ✅ TypeScript 型チェック
+  - ✅ ESLint 準拠チェック
+  - ✅ Jest テスト実行  
+  - ✅ ビルド成功
+  - ✅ カバレッジ基準達成 (Lines≥80%, Functions≥80%, Branches≥70%, Statements≥80%)
 
 ### テストの実行
 
@@ -67,6 +75,14 @@ description: Github Issueからタスクを実行し、プルリクエスト作�
 - 特定テストのみ: `npm test test/division.test.ts`
 - ウォッチモード: `npm run test:watch`
 - カバレッジ付き: `npm run test:coverage`
+
+**カバレッジ品質基準** (PR承認に必要):
+| Metric | 必須閾値 | 目標値 |
+|--------|---------|--------|
+| **Lines** | 80% | 85%+ |
+| **Functions** | 80% | 85%+ |
+| **Branches** | 70% | 80%+ |
+| **Statements** | 80% | 85%+ |
 
 ### 技術スタック
 - **言語**: Node.js + TypeScript (ES modules)
@@ -101,7 +117,8 @@ description: Github Issueからタスクを実行し、プルリクエスト作�
 - **必須**: コード変更毎にBuild-Test-Execute Cycleを実行
   1. `npm run build` でビルド
   2. ブラウザで動作確認（`npm run serve` でサーバー起動後 http://localhost:8000 にアクセス）
-  3. 品質チェック (`typecheck`, `lint`, `test`) を実行
+  3. 品質チェック (`npm run ci` または個別で `typecheck`, `lint`, `test`, `test:coverage`) を実行
+  4. **コミット前**: カバレッジ基準を満たすことを確認 (Lines≥80%, Functions≥80%, Branches≥70%, Statements≥80%)
 - 完了後にコミット・プッシュ
 - PRチェックリストを更新（ `- [ ]` → `- [x]` ）
 - 完了日と関連ファイルを記載

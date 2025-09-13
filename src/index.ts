@@ -343,10 +343,7 @@ export function keyPressed(p: P5Instance): void {
   // Update shift key state
   isShiftPressed = p.keyIsDown(p.SHIFT);
   
-  // Don't handle keyboard shortcuts here - using native event listeners instead
-  // if (keyboardShortcuts) {
-  //   keyboardShortcuts.handleKeyPressed(p);
-  // }
+  // Keyboard shortcuts are handled by native event listeners
   
   // Handle Escape key for canceling operations
   if (p.keyCode === p.ESCAPE) {
