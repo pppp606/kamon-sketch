@@ -78,4 +78,35 @@ export class Line {
 
     p.pop()
   }
+
+  // Serialization methods for localStorage persistence
+  toJSON(): {
+    firstPoint: Point | null
+    secondPoint: Point | null
+    state: LineState
+  } {
+    return {
+      firstPoint: this.firstPoint,
+      secondPoint: this.secondPoint,
+      state: this.state
+    }
+  }
+
+  static fromJSON(data: {
+    firstPoint?: Point | null
+    secondPoint?: Point | null
+    state?: LineState
+  }): Line {
+    const line = new Line()
+    // Use any cast for deserialization as it's a controlled internal operation
+    const linePrivate = line as unknown as {
+      firstPoint: Point | null
+      secondPoint: Point | null
+      state: LineState
+    }
+    linePrivate.firstPoint = data.firstPoint || null
+    linePrivate.secondPoint = data.secondPoint || null
+    linePrivate.state = data.state || 'IDLE'
+    return line
+  }
 }
