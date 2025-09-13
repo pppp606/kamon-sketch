@@ -18,7 +18,10 @@ export class History {
   private historyIndex: number = -1
 
   constructor() {
-    this.loadFromStorage()
+    // Clear any existing localStorage data and start fresh on reload
+    this.removeFromStorage()
+    // Don't load from storage - always start fresh on reload
+    // this.loadFromStorage()
   }
 
   pushHistory(state: HistoryState): void {
@@ -29,8 +32,8 @@ export class History {
     this.history.push(state)
     this.historyIndex = this.history.length - 1
     
-    // Save to localStorage
-    this.saveToStorage()
+    // Don't save to localStorage - always start fresh on reload
+    // this.saveToStorage()
   }
 
   undo(): HistoryState | null {
@@ -113,7 +116,13 @@ export class History {
       const savedData = localStorage.getItem(HISTORY_STORAGE_KEY)
       if (savedData) {
         const data: SerializedHistoryData = JSON.parse(savedData)
-        this.history = data.history || []
+        
+        // Restore history states with proper class instances
+        this.history = (data.history || []).map(state => ({
+          lines: state.lines.map((lineData: unknown) => Line.fromJSON(lineData as Parameters<typeof Line.fromJSON>[0])),
+          arcs: state.arcs.map((arcData: unknown) => CompassArc.fromJSON(arcData as Parameters<typeof CompassArc.fromJSON>[0]))
+        }))
+        
         this.historyIndex = data.historyIndex ?? -1
       }
     } catch (error) {

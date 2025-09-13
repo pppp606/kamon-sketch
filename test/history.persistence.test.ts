@@ -2,7 +2,8 @@ import { History, HistoryState } from '../src/history'
 import { Line } from '../src/line'
 import { CompassArc } from '../src/compassArc'
 
-describe('History localStorage persistence', () => {
+// Skip these tests as localStorage persistence is disabled for now
+describe.skip('History localStorage persistence', () => {
   let history: History
 
   beforeEach(() => {

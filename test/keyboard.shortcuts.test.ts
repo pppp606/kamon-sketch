@@ -94,8 +94,8 @@ describe('KeyboardShortcuts', () => {
       expect(onRedo).toHaveBeenCalledTimes(0)
     })
 
-    it('should not trigger undo when history is empty', () => {
-      // Empty history
+    it('should trigger undo even when history is empty (handled by performUndo)', () => {
+      // Empty history - but now we call onUndo regardless (performUndo handles it)
       expect(history.canUndo()).toBe(false)
       
       mockP5.keyIsDown.mockImplementation((key: number) => key === mockP5.CONTROL)
@@ -103,7 +103,8 @@ describe('KeyboardShortcuts', () => {
       
       keyboardShortcuts.handleKeyPressed(mockP5 as any)
       
-      expect(onUndo).toHaveBeenCalledTimes(0)
+      // Now it should call onUndo once (performUndo will handle the empty case)
+      expect(onUndo).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -162,8 +163,8 @@ describe('KeyboardShortcuts', () => {
       expect(onRedo).toHaveBeenCalledTimes(0)
     })
 
-    it('should not trigger redo when there is nothing to redo', () => {
-      // No redo available
+    it('should trigger redo even when there is nothing to redo (handled by performRedo)', () => {
+      // No redo available - but now we call onRedo regardless (performRedo handles it)
       expect(history.canRedo()).toBe(false)
       
       mockP5.keyIsDown.mockImplementation((key: number) => key === mockP5.CONTROL)
@@ -171,7 +172,8 @@ describe('KeyboardShortcuts', () => {
       
       keyboardShortcuts.handleKeyPressed(mockP5 as any)
       
-      expect(onRedo).toHaveBeenCalledTimes(0)
+      // Now it should call onRedo once (performRedo will handle the empty case)
+      expect(onRedo).toHaveBeenCalledTimes(1)
     })
   })
 

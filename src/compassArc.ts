@@ -242,4 +242,55 @@ export class CompassArc {
   static getMinRadius(): number {
     return MIN_RADIUS
   }
+
+  // Serialization methods for localStorage persistence
+  toJSON(): {
+    centerPoint: Point | null
+    radiusPoint: Point | null
+    currentPoint: Point | null
+    state: ArcState
+    lastAngle: number | null
+    accumulatedAngle: number
+    previewPoint: Point | null
+  } {
+    return {
+      centerPoint: this.centerPoint,
+      radiusPoint: this.radiusPoint,
+      currentPoint: this.currentPoint,
+      state: this.state,
+      lastAngle: this.lastAngle,
+      accumulatedAngle: this.accumulatedAngle,
+      previewPoint: this.previewPoint
+    }
+  }
+
+  static fromJSON(data: {
+    centerPoint?: Point | null
+    radiusPoint?: Point | null
+    currentPoint?: Point | null
+    state?: ArcState
+    lastAngle?: number | null
+    accumulatedAngle?: number
+    previewPoint?: Point | null
+  }): CompassArc {
+    const arc = new CompassArc()
+    // Use any cast for deserialization as it's a controlled internal operation
+    const arcPrivate = arc as unknown as {
+      centerPoint: Point | null
+      radiusPoint: Point | null
+      currentPoint: Point | null
+      state: ArcState
+      lastAngle: number | null
+      accumulatedAngle: number
+      previewPoint: Point | null
+    }
+    arcPrivate.centerPoint = data.centerPoint || null
+    arcPrivate.radiusPoint = data.radiusPoint || null
+    arcPrivate.currentPoint = data.currentPoint || null
+    arcPrivate.state = data.state || 'IDLE'
+    arcPrivate.lastAngle = data.lastAngle || null
+    arcPrivate.accumulatedAngle = data.accumulatedAngle || 0
+    arcPrivate.previewPoint = data.previewPoint || null
+    return arc
+  }
 }

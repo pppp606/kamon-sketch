@@ -1079,6 +1079,339 @@ describe('p5.js integration', () => {
     });
   });
 
+  describe('undo/redo functionality', () => {
+    beforeEach(() => {
+      setup(p);
+      setDrawingMode('line');
+    });
+
+    test('should undo line creation', () => {
+      // Create a line
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      expect(getLines()).toHaveLength(1);
+      
+      // Access internal undo function via test setup
+      const { performUndo } = require('../src/index');
+      performUndo();
+      
+      expect(getLines()).toHaveLength(0);
+    });
+
+    test('should redo line creation', () => {
+      // Create a line
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      expect(getLines()).toHaveLength(1);
+      
+      // Access internal functions via test setup
+      const { performUndo, performRedo } = require('../src/index');
+      
+      // Undo the line
+      performUndo();
+      expect(getLines()).toHaveLength(0);
+      
+      // Redo the line
+      performRedo();
+      expect(getLines()).toHaveLength(1);
+    });
+
+    test('should clear current line during undo', () => {
+      // Start a line but don't complete it
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      expect(getCurrentLine()).not.toBeNull();
+      
+      const { performUndo } = require('../src/index');
+      performUndo();
+      
+      expect(getCurrentLine()).toBeNull();
+    });
+
+    test('should clear selection during undo', () => {
+      // Create and select a line
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+      
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).not.toBeNull();
+      
+      const { performUndo } = require('../src/index');
+      performUndo();
+      
+      expect(selection.getSelectedElement()).toBeNull();
+    });
+
+    test('should reset compass arc during undo', () => {
+      setDrawingMode('compass');
+      
+      // Start compass arc
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      const arc = getCompassArc();
+      expect(arc?.getState()).toBe('CENTER_SET');
+      
+      const { performUndo } = require('../src/index');
+      performUndo();
+      
+      expect(arc?.getState()).toBe('IDLE');
+    });
+
+    test('should handle undo when history is empty', () => {
+      const { performUndo } = require('../src/index');
+      
+      // Should not throw when no history
+      expect(() => performUndo()).not.toThrow();
+      expect(getLines()).toHaveLength(0);
+    });
+
+    test('should handle redo when no redo available', () => {
+      const { performRedo } = require('../src/index');
+      
+      // Should not throw when no redo available
+      expect(() => performRedo()).not.toThrow();
+      expect(getLines()).toHaveLength(0);
+    });
+
+    test('should save state after completing a line', () => {
+      // Create a line (should save state automatically)
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      const { performUndo } = require('../src/index');
+      performUndo();
+      
+      // Should be able to undo the line creation
+      expect(getLines()).toHaveLength(0);
+    });
+  });
+
+  describe('completed arcs rendering', () => {
+    beforeEach(() => {
+      setup(p);
+      setDrawingMode('compass');
+    });
+
+    test('should render completed arcs in draw function', () => {
+      // Create and complete an arc
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 150;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 150;
+      p.mouseY = 150;
+      mouseDragged(p);
+      mouseReleased(); // This completes the arc
+      
+      // Mock the arc's draw method to verify it's called
+      const completedArcs = (require('../src/index') as any).completedArcs || [];
+      if (completedArcs.length > 0) {
+        const drawSpy = jest.spyOn(completedArcs[0], 'draw');
+        draw(p);
+        expect(drawSpy).toHaveBeenCalledWith(p);
+      }
+    });
+  });
+
+  describe('startDrawingFromSelectedElement function', () => {
+    beforeEach(() => {
+      setup(p);
+      setDrawingMode('line');
+    });
+
+    test('should return false when no element is selected', () => {
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).toBeNull();
+      
+      const result = startDrawingFromSelectedElement();
+      expect(result).toBe(false);
+    });
+
+    test('should return true for line mode with selected element', () => {
+      // Create and select a line
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+      
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).not.toBeNull();
+      
+      const result = startDrawingFromSelectedElement();
+      expect(result).toBe(true);
+      expect(getCurrentLine()).toBeNull(); // Should clear current line
+    });
+
+    test('should return false for compass mode', () => {
+      setDrawingMode('compass');
+      
+      // Create and select an arc (though selection might not work for compass)
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 150;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      const result = startDrawingFromSelectedElement();
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('native keyboard event handling', () => {
+    let mockDocument: any;
+    let eventListeners: { [key: string]: ((e: Event) => void)[] };
+
+    beforeEach(() => {
+      eventListeners = {};
+      
+      // Mock document.addEventListener and getElementById
+      mockDocument = {
+        addEventListener: jest.fn((event: string, handler: (e: Event) => void) => {
+          if (!eventListeners[event]) {
+            eventListeners[event] = [];
+          }
+          eventListeners[event].push(handler);
+        }),
+        getElementById: jest.fn().mockReturnValue(null)
+      };
+      
+      // Mock KeyboardEvent for Node.js environment
+      global.KeyboardEvent = jest.fn().mockImplementation((type, options = {}) => ({
+        type,
+        ...options,
+        preventDefault: jest.fn()
+      })) as any;
+      
+      // Replace global document
+      global.document = mockDocument;
+      
+      setup(p);
+    });
+
+    afterEach(() => {
+      // Clean up
+      eventListeners = {};
+    });
+
+    test('should handle Ctrl+Z for undo', () => {
+      // Create a line first
+      setDrawingMode('line');
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      expect(getLines()).toHaveLength(1);
+      
+      // Simulate Ctrl+Z keydown event
+      const mockEvent = new KeyboardEvent('keydown', {
+        key: 'z',
+        ctrlKey: true,
+        shiftKey: false
+      });
+      
+      // Mock preventDefault
+      const preventDefaultSpy = jest.spyOn(mockEvent, 'preventDefault');
+      
+      // Trigger the native keyboard listener
+      const { setupNativeKeyboardListeners } = require('../src/index');
+      setupNativeKeyboardListeners();
+      
+      if (eventListeners['keydown']) {
+        eventListeners['keydown'].forEach(handler => handler(mockEvent));
+      }
+      
+      expect(preventDefaultSpy).toHaveBeenCalled();
+    });
+
+    test('should handle Ctrl+Shift+Z for redo', () => {
+      // Create and undo a line first
+      setDrawingMode('line');
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+      
+      const { performUndo, setupNativeKeyboardListeners } = require('../src/index');
+      performUndo();
+      expect(getLines()).toHaveLength(0);
+      
+      // Simulate Ctrl+Shift+Z keydown event
+      const mockEvent = new KeyboardEvent('keydown', {
+        key: 'z',
+        ctrlKey: true,
+        shiftKey: true
+      });
+      
+      const preventDefaultSpy = jest.spyOn(mockEvent, 'preventDefault');
+      
+      setupNativeKeyboardListeners();
+      
+      if (eventListeners['keydown']) {
+        eventListeners['keydown'].forEach(handler => handler(mockEvent));
+      }
+      
+      expect(preventDefaultSpy).toHaveBeenCalled();
+    });
+
+    test('should handle Ctrl+Y for redo', () => {
+      // Simulate Ctrl+Y keydown event
+      const mockEvent = new KeyboardEvent('keydown', {
+        key: 'y',
+        ctrlKey: true,
+        shiftKey: false
+      });
+      
+      const preventDefaultSpy = jest.spyOn(mockEvent, 'preventDefault');
+      
+      const { setupNativeKeyboardListeners } = require('../src/index');
+      setupNativeKeyboardListeners();
+      
+      if (eventListeners['keydown']) {
+        eventListeners['keydown'].forEach(handler => handler(mockEvent));
+      }
+      
+      expect(preventDefaultSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('mode button management', () => {
     test('should create sketch when p5 is available', () => {
       // Mock p5 constructor

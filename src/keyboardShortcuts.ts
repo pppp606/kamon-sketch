@@ -38,14 +38,12 @@ export class KeyboardShortcuts {
   }
 
   private handleUndo(): void {
-    if (this.history.canUndo()) {
-      this.onUndo()
-    }
+    // Call the same method as the button click - it handles everything
+    this.onUndo()
   }
 
   private handleRedo(): void {
-    if (this.history.canRedo()) {
-      this.onRedo()
-    }
+    // Call the same method as the button click - it handles everything
+    this.onRedo()
   }
 }

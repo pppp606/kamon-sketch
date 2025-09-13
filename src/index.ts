@@ -6,7 +6,6 @@ import { Selection, SelectableElement } from './selection';
 import { Fill } from './fill';
 import { CompassRadiusState } from './compassRadiusState';
 import { History, HistoryState } from './history';
-import { KeyboardShortcuts } from './keyboardShortcuts';
 import { UndoRedoButtons } from './undoRedoButtons';
 import { P5Instance } from './types/p5';
 
@@ -19,7 +18,6 @@ let selection: Selection;
 let fill: Fill;
 let compassRadiusState: CompassRadiusState;
 let history: History;
-let keyboardShortcuts: KeyboardShortcuts;
 let undoRedoButtons: UndoRedoButtons;
 
 // Keyboard state
@@ -66,7 +64,6 @@ export function setup(p: P5Instance): void {
   
   // Initialize history system
   history = new History();
-  keyboardShortcuts = new KeyboardShortcuts(history, performUndo, performRedo);
   undoRedoButtons = new UndoRedoButtons(history, performUndo, performRedo);
   
   // Save initial empty state
@@ -346,10 +343,10 @@ export function keyPressed(p: P5Instance): void {
   // Update shift key state
   isShiftPressed = p.keyIsDown(p.SHIFT);
   
-  // Handle keyboard shortcuts for undo/redo
-  if (keyboardShortcuts) {
-    keyboardShortcuts.handleKeyPressed(p);
-  }
+  // Don't handle keyboard shortcuts here - using native event listeners instead
+  // if (keyboardShortcuts) {
+  //   keyboardShortcuts.handleKeyPressed(p);
+  // }
   
   // Handle Escape key for canceling operations
   if (p.keyCode === p.ESCAPE) {
@@ -426,7 +423,7 @@ export function startDrawingFromSelectedElement(): boolean {
   return false
 }
 
-function setupModeButtons(): void {
+export function setupModeButtons(): void {
   const lineBtn = document.getElementById('line-btn');
   const compassBtn = document.getElementById('compass-btn');
   const fillBtn = document.getElementById('fill-btn');
@@ -488,16 +485,41 @@ export function createSketch(): void {
   });
 }
 
+// Add native keyboard event listeners for better key repeat handling
+export function setupNativeKeyboardListeners(): void {
+  document.addEventListener('keydown', (e: KeyboardEvent) => {
+    const isCtrlOrCmd = e.ctrlKey || e.metaKey
+    
+    // Handle Ctrl/Cmd+Z (Undo)
+    if (isCtrlOrCmd && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault()
+      performUndo()
+    }
+    // Handle Ctrl/Cmd+Shift+Z (Redo)
+    else if (isCtrlOrCmd && e.key === 'z' && e.shiftKey) {
+      e.preventDefault()
+      performRedo()
+    }
+    // Handle Ctrl/Cmd+Y (Redo)
+    else if (isCtrlOrCmd && e.key === 'y') {
+      e.preventDefault()
+      performRedo()
+    }
+  })
+}
+
 // Auto-initialize if running in browser
 if (typeof window !== 'undefined') {
   // Wait for DOM to be ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       setupModeButtons();
+      setupNativeKeyboardListeners();
       createSketch();
     });
   } else {
     setupModeButtons();
+    setupNativeKeyboardListeners();
     createSketch();
   }
 }

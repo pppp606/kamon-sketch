@@ -266,4 +266,79 @@ describe('Line', () => {
       expect(p.pop).not.toHaveBeenCalled()
     })
   })
+
+  describe('serialization', () => {
+    beforeEach(() => {
+      line = new Line()
+    })
+
+    test('should serialize to JSON', () => {
+      line.setFirstPoint(10, 20);
+      line.setSecondPoint(30, 40);
+      
+      const json = line.toJSON();
+      expect(json).toEqual({
+        firstPoint: { x: 10, y: 20 },
+        secondPoint: { x: 30, y: 40 },
+        state: 'DRAWING'
+      });
+    });
+
+    test('should deserialize from JSON', () => {
+      const data = {
+        firstPoint: { x: 50, y: 60 },
+        secondPoint: { x: 70, y: 80 },
+        state: 'DRAWING' as const
+      };
+      
+      const deserializedLine = Line.fromJSON(data);
+      expect(deserializedLine.getFirstPoint()).toEqual({ x: 50, y: 60 });
+      expect(deserializedLine.getSecondPoint()).toEqual({ x: 70, y: 80 });
+      expect(deserializedLine.getState()).toBe('DRAWING');
+    });
+
+    test('should handle partial JSON data', () => {
+      const data = {
+        firstPoint: { x: 100, y: 200 }
+      };
+      
+      const deserializedLine = Line.fromJSON(data);
+      expect(deserializedLine.getFirstPoint()).toEqual({ x: 100, y: 200 });
+      expect(deserializedLine.getSecondPoint()).toBeNull();
+      expect(deserializedLine.getState()).toBe('IDLE');
+    });
+
+    test('should handle empty JSON data', () => {
+      const deserializedLine = Line.fromJSON({});
+      expect(deserializedLine.getFirstPoint()).toBeNull();
+      expect(deserializedLine.getSecondPoint()).toBeNull();
+      expect(deserializedLine.getState()).toBe('IDLE');
+    });
+
+    test('should handle null values in JSON data', () => {
+      const data = {
+        firstPoint: null,
+        secondPoint: null,
+        state: 'FIRST_POINT' as const
+      };
+      
+      const deserializedLine = Line.fromJSON(data);
+      expect(deserializedLine.getFirstPoint()).toBeNull();
+      expect(deserializedLine.getSecondPoint()).toBeNull();
+      expect(deserializedLine.getState()).toBe('FIRST_POINT');
+    });
+
+    test('should handle undefined values in JSON data', () => {
+      const data = {
+        firstPoint: undefined,
+        secondPoint: undefined,
+        state: undefined
+      };
+      
+      const deserializedLine = Line.fromJSON(data);
+      expect(deserializedLine.getFirstPoint()).toBeNull();
+      expect(deserializedLine.getSecondPoint()).toBeNull();
+      expect(deserializedLine.getState()).toBe('IDLE');
+    });
+  })
 })
