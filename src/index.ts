@@ -142,9 +142,11 @@ export function mousePressed(p: P5Instance): void {
         compassArc.startDrawing();
         compassArc.updateDrawing(p.mouseX, p.mouseY);
       } else {
-        // Normal click after center set: use current stored radius
+        // Normal click after center set: use current stored radius and set start angle from click position
         const currentRadius = compassRadiusState.getCurrentRadius();
-        compassArc.setRadiusDistance(currentRadius);
+        compassArc.setStoredRadius(currentRadius);
+        const startAngle = compassArc.calculateStartAngleFromClick(p.mouseX, p.mouseY);
+        compassArc.setRadiusAtAngle(startAngle);
         // Start drawing after setting radius with stored value
         compassArc.startDrawing();
         compassArc.updateDrawing(p.mouseX, p.mouseY);

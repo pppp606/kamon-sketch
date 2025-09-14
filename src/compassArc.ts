@@ -243,6 +243,38 @@ export class CompassArc {
     return MIN_RADIUS
   }
 
+  calculateStartAngleFromClick(x: number, y: number): number {
+    if (!this.centerPoint) {
+      throw new Error('Center point must be set before calculating angle from click')
+    }
+    return Math.atan2(y - this.centerPoint.y, x - this.centerPoint.x)
+  }
+
+  setRadiusAtAngle(angle: number): void {
+    if (!this.centerPoint) {
+      throw new Error('Center point must be set before setting radius at angle')
+    }
+    const radius = this.getStoredRadius()
+    if (radius <= 0) {
+      throw new Error('Valid radius must be available before setting radius at angle')
+    }
+    // Calculate radius point at the specified angle
+    const x = this.centerPoint.x + radius * Math.cos(angle)
+    const y = this.centerPoint.y + radius * Math.sin(angle)
+    this.radiusPoint = { x, y }
+    this.state = 'RADIUS_SET'
+  }
+
+  private storedRadius: number = 0
+
+  setStoredRadius(radius: number): void {
+    this.storedRadius = radius
+  }
+
+  getStoredRadius(): number {
+    return this.storedRadius
+  }
+
   // Serialization methods for localStorage persistence
   toJSON(): {
     centerPoint: Point | null
@@ -252,6 +284,7 @@ export class CompassArc {
     lastAngle: number | null
     accumulatedAngle: number
     previewPoint: Point | null
+    storedRadius: number
   } {
     return {
       centerPoint: this.centerPoint,
@@ -260,7 +293,8 @@ export class CompassArc {
       state: this.state,
       lastAngle: this.lastAngle,
       accumulatedAngle: this.accumulatedAngle,
-      previewPoint: this.previewPoint
+      previewPoint: this.previewPoint,
+      storedRadius: this.storedRadius
     }
   }
 
@@ -272,6 +306,7 @@ export class CompassArc {
     lastAngle?: number | null
     accumulatedAngle?: number
     previewPoint?: Point | null
+    storedRadius?: number
   }): CompassArc {
     const arc = new CompassArc()
     // Use any cast for deserialization as it's a controlled internal operation
@@ -283,6 +318,7 @@ export class CompassArc {
       lastAngle: number | null
       accumulatedAngle: number
       previewPoint: Point | null
+      storedRadius: number
     }
     arcPrivate.centerPoint = data.centerPoint || null
     arcPrivate.radiusPoint = data.radiusPoint || null
@@ -291,6 +327,7 @@ export class CompassArc {
     arcPrivate.lastAngle = data.lastAngle || null
     arcPrivate.accumulatedAngle = data.accumulatedAngle || 0
     arcPrivate.previewPoint = data.previewPoint || null
+    arcPrivate.storedRadius = data.storedRadius || 0
     return arc
   }
 }

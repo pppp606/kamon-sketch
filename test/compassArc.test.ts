@@ -460,7 +460,7 @@ describe('CompassArc', () => {
     it('should maintain push/pop consistency', () => {
       compassArc.setCenter(100, 100)
       compassArc.draw(p as any)
-      
+
       expect(p.push).toHaveBeenCalledTimes(1)
       expect(p.pop).toHaveBeenCalledTimes(1)
     })
@@ -469,7 +469,7 @@ describe('CompassArc', () => {
       const states = [
         () => compassArc.setCenter(100, 100),
         () => { compassArc.setCenter(100, 100); compassArc.setRadius(150, 100) },
-        () => { 
+        () => {
           compassArc.setCenter(100, 100)
           compassArc.setRadius(150, 100)
           compassArc.startDrawing()
@@ -482,7 +482,7 @@ describe('CompassArc', () => {
         compassArc = new CompassArc()
         setupState()
         compassArc.draw(p as any)
-        
+
         expect(p.push).toHaveBeenCalledTimes(1)
         expect(p.pop).toHaveBeenCalledTimes(1)
       })
@@ -490,9 +490,308 @@ describe('CompassArc', () => {
 
     it('should not call push/pop when no center is set', () => {
       compassArc.draw(p as any)
-      
+
       expect(p.push).not.toHaveBeenCalled()
       expect(p.pop).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('arc start angle based on click position (TDD - Red Phase)', () => {
+    let p: P5Instance
+
+    beforeEach(() => {
+      p = {
+        push: jest.fn(),
+        pop: jest.fn(),
+        noFill: jest.fn(),
+        stroke: jest.fn(),
+        strokeWeight: jest.fn(),
+        point: jest.fn(),
+        line: jest.fn(),
+        circle: jest.fn(),
+        arc: jest.fn(),
+      }
+      compassArc = new CompassArc()
+    })
+
+    describe('normal mode (second click sets radius and start angle)', () => {
+      it('should start arc at 0° when second click is directly right of center', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadius(150, 100) // Right of center = 0 degrees
+
+        const expectedStartAngle = 0
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+
+      it('should start arc at 90° when second click is directly below center', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadius(100, 150) // Below center = 90 degrees (PI/2)
+
+        const expectedStartAngle = Math.PI / 2
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+
+      it('should start arc at 180° when second click is directly left of center', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadius(50, 100) // Left of center = 180 degrees (PI)
+
+        const expectedStartAngle = Math.PI
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+
+      it('should start arc at 270° when second click is directly above center', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadius(100, 50) // Above center = 270 degrees (-PI/2)
+
+        const expectedStartAngle = -Math.PI / 2
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+
+      it('should start arc at 45° when second click is at bottom-right diagonal', () => {
+        compassArc.setCenter(100, 100)
+        const radius = 50
+        const clickX = 100 + radius * Math.cos(Math.PI / 4) // 45 degrees
+        const clickY = 100 + radius * Math.sin(Math.PI / 4)
+        compassArc.setRadius(clickX, clickY)
+
+        const expectedStartAngle = Math.PI / 4
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+
+      it('should start arc at 135° when second click is at bottom-left diagonal', () => {
+        compassArc.setCenter(100, 100)
+        const radius = 50
+        const clickX = 100 + radius * Math.cos(3 * Math.PI / 4) // 135 degrees
+        const clickY = 100 + radius * Math.sin(3 * Math.PI / 4)
+        compassArc.setRadius(clickX, clickY)
+
+        const expectedStartAngle = 3 * Math.PI / 4
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+
+      it('should start arc at -45° when second click is at top-right diagonal', () => {
+        compassArc.setCenter(100, 100)
+        const radius = 50
+        const clickX = 100 + radius * Math.cos(-Math.PI / 4) // -45 degrees
+        const clickY = 100 + radius * Math.sin(-Math.PI / 4)
+        compassArc.setRadius(clickX, clickY)
+
+        const expectedStartAngle = -Math.PI / 4
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+
+      it('should start arc at -135° when second click is at top-left diagonal', () => {
+        compassArc.setCenter(100, 100)
+        const radius = 50
+        const clickX = 100 + radius * Math.cos(-3 * Math.PI / 4) // -135 degrees
+        const clickY = 100 + radius * Math.sin(-3 * Math.PI / 4)
+        compassArc.setRadius(clickX, clickY)
+
+        const expectedStartAngle = -3 * Math.PI / 4
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+    })
+
+    describe('fixed radius mode (angle from center through click position)', () => {
+      it('should calculate start angle for fixed radius when click is at 0°', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadiusDistance(50) // Set fixed radius
+
+        // Simulate click at 0 degrees from center
+        const clickX = 150 // 50 pixels right of center
+        const clickY = 100 // Same y as center
+
+        // The start angle should be calculated from center through click position
+        const expectedAngle = 0 // 0 degrees for point directly right of center
+
+        const actualAngle = compassArc.calculateStartAngleFromClick(clickX, clickY)
+        expect(actualAngle).toBeCloseTo(expectedAngle, 5)
+      })
+
+      it('should calculate start angle for fixed radius when click is at 90°', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadiusDistance(50)
+
+        const clickX = 100 // Same x as center
+        const clickY = 150 // 50 pixels below center
+
+        const expectedAngle = Math.PI / 2
+
+        const actualAngle = compassArc.calculateStartAngleFromClick(clickX, clickY)
+        expect(actualAngle).toBeCloseTo(expectedAngle, 5)
+      })
+
+      it('should calculate start angle for fixed radius when click is at 180°', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadiusDistance(50)
+
+        const clickX = 50 // 50 pixels left of center
+        const clickY = 100 // Same y as center
+
+        const expectedAngle = Math.PI
+
+        const actualAngle = compassArc.calculateStartAngleFromClick(clickX, clickY)
+        expect(actualAngle).toBeCloseTo(expectedAngle, 5)
+      })
+
+      it('should calculate start angle for fixed radius when click is at 270°', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadiusDistance(50)
+
+        const clickX = 100 // Same x as center
+        const clickY = 50 // 50 pixels above center
+
+        const expectedAngle = -Math.PI / 2
+
+        const actualAngle = compassArc.calculateStartAngleFromClick(clickX, clickY)
+        expect(actualAngle).toBeCloseTo(expectedAngle, 5)
+      })
+    })
+
+    describe('edge cases for vertical and horizontal lines', () => {
+      it('should handle vertical line down (90°) correctly', () => {
+        compassArc.setCenter(0, 0)
+        compassArc.setRadius(0, 100) // Straight down
+
+        const expectedAngle = Math.PI / 2
+        const actualAngle = compassArc.getStartAngle()
+
+        expect(actualAngle).toBeCloseTo(expectedAngle, 5)
+      })
+
+      it('should handle vertical line up (270°) correctly', () => {
+        compassArc.setCenter(0, 0)
+        compassArc.setRadius(0, -100) // Straight up
+
+        const expectedAngle = -Math.PI / 2
+        const actualAngle = compassArc.getStartAngle()
+
+        expect(actualAngle).toBeCloseTo(expectedAngle, 5)
+      })
+
+      it('should handle horizontal line right (0°) correctly', () => {
+        compassArc.setCenter(0, 0)
+        compassArc.setRadius(100, 0) // Straight right
+
+        const expectedAngle = 0
+        const actualAngle = compassArc.getStartAngle()
+
+        expect(actualAngle).toBeCloseTo(expectedAngle, 5)
+      })
+
+      it('should handle horizontal line left (180°) correctly', () => {
+        compassArc.setCenter(0, 0)
+        compassArc.setRadius(-100, 0) // Straight left
+
+        const expectedAngle = Math.PI
+        const actualAngle = compassArc.getStartAngle()
+
+        expect(actualAngle).toBeCloseTo(expectedAngle, 5)
+      })
+
+      it('should handle click exactly at center (undefined angle)', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadiusDistance(50)
+
+        // Click exactly at center should return 0 angle
+        const actualAngle = compassArc.calculateStartAngleFromClick(100, 100)
+        expect(actualAngle).toBe(0)
+      })
+    })
+
+    describe('arc path generation with correct start angles', () => {
+      it('should generate arc path with start angle from second click position', () => {
+        compassArc.setCenter(100, 100)
+        compassArc.setRadius(150, 100) // Start at 0 degrees
+        compassArc.startDrawing()
+        compassArc.updateDrawing(100, 150) // End at 90 degrees
+
+        compassArc.draw(p as any)
+
+        // The arc should be drawn with start angle = 0, end angle = PI/2
+        expect(p.arc).toHaveBeenCalledWith(100, 100, 100, 100, 0, Math.PI / 2)
+      })
+
+      it('should generate arc path starting from diagonal click position', () => {
+        compassArc.setCenter(0, 0)
+        const radius = 50
+        const startAngle = Math.PI / 4 // 45 degrees
+        const clickX = radius * Math.cos(startAngle)
+        const clickY = radius * Math.sin(startAngle)
+
+        compassArc.setRadius(clickX, clickY)
+        compassArc.startDrawing()
+        compassArc.updateDrawing(0, radius) // End at 90 degrees
+
+        compassArc.draw(p as any)
+
+        // The arc should start from 45 degrees and end at 90 degrees
+        // Check that p.arc was called with correct parameters, allowing for floating point precision
+        expect(p.arc).toHaveBeenCalledTimes(1)
+        const [centerX, centerY, width, height, startAngleArg, endAngleArg] = p.arc.mock.calls[0]
+        expect(centerX).toBe(0)
+        expect(centerY).toBe(0)
+        expect(width).toBeCloseTo(radius * 2, 5)
+        expect(height).toBeCloseTo(radius * 2, 5)
+        expect(startAngleArg).toBeCloseTo(Math.PI / 4, 5)
+        expect(endAngleArg).toBeCloseTo(Math.PI / 2, 5)
+      })
+    })
+
+    describe('integration with mouse event simulation', () => {
+      it('should correctly calculate start angle from simulated mouse clicks', () => {
+        // Simulate mouse event data structure
+        const mockMouseEvent = {
+          x: 150,
+          y: 100
+        }
+
+        compassArc.setCenter(100, 100)
+
+        // Simulate second click that should set radius and start angle
+        compassArc.setRadius(mockMouseEvent.x, mockMouseEvent.y)
+
+        const expectedStartAngle = 0 // Click is directly right of center
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+
+      it('should work with negative coordinates', () => {
+        compassArc.setCenter(-50, -50)
+        compassArc.setRadius(-100, -50) // Left of center
+
+        const expectedStartAngle = Math.PI // 180 degrees
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
+
+      it('should work with large coordinate values', () => {
+        compassArc.setCenter(1000, 1000)
+        compassArc.setRadius(1000, 1500) // Below center
+
+        const expectedStartAngle = Math.PI / 2 // 90 degrees
+        const actualStartAngle = compassArc.getStartAngle()
+
+        expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5)
+      })
     })
   })
 })
