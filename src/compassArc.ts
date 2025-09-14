@@ -1,8 +1,32 @@
 export type Point = { x: number; y: number };
 export type ArcState = "IDLE" | "CENTER_SET" | "RADIUS_SET" | "DRAWING";
 
-const FULL_CIRCLE_EPS = 0.1;
+const FULL_CIRCLE_EPS = 0.05;
 const MIN_RADIUS = 0.001;
+
+// Angle utility functions (exported for testing)
+export function normalizeAngle(angle: number): number {
+  // Normalize angle to range (-π, π]
+  let normalized = angle % (2 * Math.PI);
+  // Handle negative results from modulo in JavaScript
+  if (normalized <= -Math.PI) {
+    normalized += 2 * Math.PI;
+  } else if (normalized > Math.PI) {
+    normalized -= 2 * Math.PI;
+  }
+  // Special case: -π should become π for consistency
+  if (Math.abs(normalized + Math.PI) < 1e-10) {
+    normalized = Math.PI;
+  }
+  return normalized;
+}
+
+export function shortestSignedDelta(fromAngle: number, toAngle: number): number {
+  // Calculate shortest signed angular difference from fromAngle to toAngle
+  // Returns value in range (-π, π]
+  const delta = normalizeAngle(toAngle - fromAngle);
+  return delta;
+}
 
 interface P5DrawingContext {
   push(): void;
@@ -33,7 +57,8 @@ export class CompassArc {
   private currentPoint: Point | null = null;
   private state: ArcState = "IDLE";
   private lastAngle: number | null = null;
-  private accumulatedAngle = 0;
+  private netAngle = 0; // Signed accumulated angle for proper full circle detection
+  private accumulatedAngleAbs = 0; // Absolute accumulated angle for drawing threshold
   private previewPoint: Point | null = null;
 
   getCenterPoint(): Point | null {
@@ -138,7 +163,7 @@ export class CompassArc {
   }
 
   getTotalAngle(): number {
-    return this.accumulatedAngle;
+    return this.accumulatedAngleAbs;
   }
 
   isFullCircle(): boolean {
@@ -146,9 +171,19 @@ export class CompassArc {
       return false;
     }
 
-    const totalAngle = this.getTotalAngle();
+    if (!this.radiusPoint || !this.currentPoint) {
+      return false;
+    }
 
-    return Math.abs(totalAngle - 2 * Math.PI) < FULL_CIRCLE_EPS;
+    // Condition A: Net angle indicates at least one full revolution
+    const hasCompletedRevolution = Math.abs(this.netAngle) >= (2 * Math.PI - FULL_CIRCLE_EPS);
+
+    // Condition B: Current angle is close to start angle
+    const startAngle = this.getStartAngle();
+    const currentAngle = this.getEndAngle();
+    const angleProximity = Math.abs(shortestSignedDelta(startAngle, currentAngle)) <= FULL_CIRCLE_EPS;
+
+    return hasCompletedRevolution && angleProximity;
   }
 
   draw(p: P5DrawingContext): void {
@@ -240,7 +275,8 @@ export class CompassArc {
     copy.radiusPoint = { ...this.radiusPoint };
     copy.currentPoint = { ...this.currentPoint };
     copy.state = "DRAWING";
-    copy.accumulatedAngle = this.accumulatedAngle;
+    copy.netAngle = this.netAngle;
+    copy.accumulatedAngleAbs = this.accumulatedAngleAbs;
     copy.lastAngle = this.lastAngle;
 
     return copy;
@@ -248,7 +284,8 @@ export class CompassArc {
 
   private resetAngleTracking(): void {
     this.lastAngle = null;
-    this.accumulatedAngle = 0;
+    this.netAngle = 0;
+    this.accumulatedAngleAbs = 0;
   }
 
   private accumulateAngle(): void {
@@ -261,19 +298,17 @@ export class CompassArc {
 
     if (this.lastAngle === null) {
       this.lastAngle = startAngle;
-      this.accumulatedAngle = 0;
+      this.netAngle = 0;
+      this.accumulatedAngleAbs = 0;
     }
 
-    let delta = currentAngle - this.lastAngle;
+    // Calculate signed delta using utility function
+    const deltaSigned = shortestSignedDelta(this.lastAngle, currentAngle);
 
-    while (delta <= -Math.PI) {
-      delta += 2 * Math.PI;
-    }
-    while (delta > Math.PI) {
-      delta -= 2 * Math.PI;
-    }
+    // Accumulate both signed angle (for full circle detection) and absolute angle (for drawing threshold)
+    this.netAngle += deltaSigned;
+    this.accumulatedAngleAbs += Math.abs(deltaSigned);
 
-    this.accumulatedAngle += Math.abs(delta);
     this.lastAngle = currentAngle;
   }
 
@@ -294,16 +329,15 @@ export class CompassArc {
     return Math.atan2(y - this.centerPoint.y, x - this.centerPoint.x);
   }
 
-  setRadiusAtAngle(angle: number, startDrawingImmediately = false): void {
+  setRadiusAtAngle(angle: number, radius: number, startDrawingImmediately = false): void {
     if (!this.centerPoint) {
       throw new Error(
         "Center point must be set before setting radius at angle",
       );
     }
-    const radius = this.getStoredRadius();
-    if (radius <= 0) {
+    if (radius <= MIN_RADIUS) {
       throw new Error(
-        "Valid radius must be available before setting radius at angle",
+        "Valid radius must be greater than minimum radius",
       );
     }
     // Calculate radius point at the specified angle
@@ -319,15 +353,6 @@ export class CompassArc {
     }
   }
 
-  private storedRadius: number = 0;
-
-  setStoredRadius(radius: number): void {
-    this.storedRadius = radius;
-  }
-
-  getStoredRadius(): number {
-    return this.storedRadius;
-  }
 
   // Serialization methods for localStorage persistence
   toJSON(): {
@@ -336,9 +361,9 @@ export class CompassArc {
     currentPoint: Point | null;
     state: ArcState;
     lastAngle: number | null;
-    accumulatedAngle: number;
+    netAngle: number;
+    accumulatedAngleAbs: number;
     previewPoint: Point | null;
-    storedRadius: number;
   } {
     return {
       centerPoint: this.centerPoint,
@@ -346,9 +371,9 @@ export class CompassArc {
       currentPoint: this.currentPoint,
       state: this.state,
       lastAngle: this.lastAngle,
-      accumulatedAngle: this.accumulatedAngle,
+      netAngle: this.netAngle,
+      accumulatedAngleAbs: this.accumulatedAngleAbs,
       previewPoint: this.previewPoint,
-      storedRadius: this.storedRadius,
     };
   }
 
@@ -358,9 +383,10 @@ export class CompassArc {
     currentPoint?: Point | null;
     state?: ArcState;
     lastAngle?: number | null;
+    netAngle?: number;
+    accumulatedAngleAbs?: number;
+    // Legacy fields for backward compatibility
     accumulatedAngle?: number;
-    previewPoint?: Point | null;
-    storedRadius?: number;
   }): CompassArc {
     const arc = new CompassArc();
     // Use any cast for deserialization as it's a controlled internal operation
@@ -370,18 +396,17 @@ export class CompassArc {
       currentPoint: Point | null;
       state: ArcState;
       lastAngle: number | null;
-      accumulatedAngle: number;
-      previewPoint: Point | null;
-      storedRadius: number;
+      netAngle: number;
+      accumulatedAngleAbs: number;
     };
     arcPrivate.centerPoint = data.centerPoint || null;
     arcPrivate.radiusPoint = data.radiusPoint || null;
     arcPrivate.currentPoint = data.currentPoint || null;
     arcPrivate.state = data.state || "IDLE";
     arcPrivate.lastAngle = data.lastAngle || null;
-    arcPrivate.accumulatedAngle = data.accumulatedAngle || 0;
-    arcPrivate.previewPoint = data.previewPoint || null;
-    arcPrivate.storedRadius = data.storedRadius || 0;
+    arcPrivate.netAngle = data.netAngle || 0;
+    // Backward compatibility: use old accumulatedAngle if new field not present
+    arcPrivate.accumulatedAngleAbs = data.accumulatedAngleAbs || data.accumulatedAngle || 0;
     return arc;
   }
 }

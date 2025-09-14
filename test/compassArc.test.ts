@@ -1,4 +1,4 @@
-import { CompassArc } from "../src/compassArc";
+import { CompassArc, normalizeAngle, shortestSignedDelta } from "../src/compassArc";
 
 interface P5Instance {
   push: jest.Mock;
@@ -823,6 +823,164 @@ describe("CompassArc", () => {
 
         expect(actualStartAngle).toBeCloseTo(expectedStartAngle, 5);
       });
+    });
+  });
+
+  describe("angle utilities", () => {
+    describe("normalizeAngle", () => {
+      it("should normalize positive angles > π", () => {
+        expect(normalizeAngle(2 * Math.PI)).toBeCloseTo(0, 10);
+        expect(normalizeAngle(3 * Math.PI)).toBeCloseTo(Math.PI, 10); // 3π becomes π
+        expect(normalizeAngle(5 * Math.PI / 2)).toBeCloseTo(Math.PI / 2, 10);
+      });
+
+      it("should normalize negative angles < -π", () => {
+        expect(normalizeAngle(-2 * Math.PI)).toBeCloseTo(0, 10);
+        expect(normalizeAngle(-3 * Math.PI)).toBeCloseTo(Math.PI, 10);
+        expect(normalizeAngle(-5 * Math.PI / 2)).toBeCloseTo(-Math.PI / 2, 10);
+      });
+
+      it("should handle boundary values correctly", () => {
+        expect(normalizeAngle(Math.PI)).toBeCloseTo(Math.PI, 10);
+        expect(normalizeAngle(-Math.PI)).toBeCloseTo(Math.PI, 10);
+        expect(normalizeAngle(0)).toBeCloseTo(0, 10);
+      });
+
+      it("should handle large angle values", () => {
+        expect(normalizeAngle(10 * Math.PI)).toBeCloseTo(0, 10);
+        expect(normalizeAngle(-10 * Math.PI)).toBeCloseTo(0, 10);
+        expect(normalizeAngle(10.5 * Math.PI)).toBeCloseTo(Math.PI / 2, 10);
+      });
+    });
+
+    describe("shortestSignedDelta", () => {
+      it("should calculate simple positive delta", () => {
+        expect(shortestSignedDelta(0, Math.PI / 2)).toBeCloseTo(Math.PI / 2, 10);
+        expect(shortestSignedDelta(Math.PI / 4, 3 * Math.PI / 4)).toBeCloseTo(Math.PI / 2, 10);
+      });
+
+      it("should calculate simple negative delta", () => {
+        expect(shortestSignedDelta(Math.PI / 2, 0)).toBeCloseTo(-Math.PI / 2, 10);
+        expect(shortestSignedDelta(3 * Math.PI / 4, Math.PI / 4)).toBeCloseTo(-Math.PI / 2, 10);
+      });
+
+      it("should handle wrap-around cases", () => {
+        // From 3π/4 to -3π/4: direct path would be -3π/2, but shorter path is +π/2
+        expect(shortestSignedDelta(3 * Math.PI / 4, -3 * Math.PI / 4)).toBeCloseTo(Math.PI / 2, 10);
+        // From -3π/4 to 3π/4: direct path would be +3π/2, but shorter path is -π/2
+        expect(shortestSignedDelta(-3 * Math.PI / 4, 3 * Math.PI / 4)).toBeCloseTo(-Math.PI / 2, 10);
+      });
+
+      it("should handle boundary cases", () => {
+        expect(shortestSignedDelta(0, Math.PI)).toBeCloseTo(Math.PI, 10);
+        expect(shortestSignedDelta(Math.PI, 0)).toBeCloseTo(Math.PI, 10); // From π to 0, shorter path is +π (wrapping around)
+        expect(shortestSignedDelta(0, 0)).toBeCloseTo(0, 10);
+      });
+    });
+  });
+
+  describe("improved full circle detection", () => {
+    beforeEach(() => {
+      compassArc = new CompassArc();
+      compassArc.setCenter(100, 100);
+      compassArc.setRadius(150, 100); // Start at 0 degrees
+      compassArc.startDrawing();
+    });
+
+    it("should NOT detect full circle from zigzag motion that accumulates 2π", () => {
+      // Zigzag motion: 0° -> 90° -> 0° -> 90° -> 0° -> 90° -> 0° -> 90°
+      // This accumulates more than 2π in absolute terms but doesn't complete a circle
+      for (let i = 0; i < 8; i++) {
+        if (i % 2 === 0) {
+          compassArc.updateDrawing(100, 150); // 90 degrees
+        } else {
+          compassArc.updateDrawing(150, 100); // 0 degrees
+        }
+      }
+
+      expect(compassArc.isFullCircle()).toBe(false);
+    });
+
+    it("should detect full circle when completing a proper revolution", () => {
+      // Complete a full circle: 0° -> 90° -> 180° -> 270° -> back to ~0°
+      compassArc.updateDrawing(100, 150); // 90°
+      compassArc.updateDrawing(50, 100);  // 180°
+      compassArc.updateDrawing(100, 50);  // 270°
+      compassArc.updateDrawing(149, 100); // Close to 0° (within threshold)
+
+      expect(compassArc.isFullCircle()).toBe(true);
+    });
+
+    it("should NOT detect full circle when net angle is large but not near start", () => {
+      // Move through more than 2π but end up far from start position
+      compassArc.updateDrawing(100, 150); // 90°
+      compassArc.updateDrawing(50, 100);  // 180°
+      compassArc.updateDrawing(100, 50);  // 270°
+      compassArc.updateDrawing(150, 100); // 0° (full revolution)
+      compassArc.updateDrawing(100, 150); // 90° again (now far from start)
+
+      expect(compassArc.isFullCircle()).toBe(false);
+    });
+
+    it("should detect full circle in reverse direction", () => {
+      // Complete a full circle in reverse: 0° -> 270° -> 180° -> 90° -> back to ~0°
+      compassArc.updateDrawing(100, 50);  // 270°
+      compassArc.updateDrawing(50, 100);  // 180°
+      compassArc.updateDrawing(100, 150); // 90°
+      compassArc.updateDrawing(149, 100); // Close to 0° (within threshold)
+
+      expect(compassArc.isFullCircle()).toBe(true);
+    });
+  });
+
+  describe("setRadiusAtAngle with new API", () => {
+    beforeEach(() => {
+      compassArc = new CompassArc();
+      compassArc.setCenter(100, 100);
+    });
+
+    it("should set radius point at specified angle and radius", () => {
+      const angle = Math.PI / 4; // 45 degrees
+      const radius = 50;
+
+      compassArc.setRadiusAtAngle(angle, radius);
+
+      const radiusPoint = compassArc.getRadiusPoint();
+      expect(radiusPoint).toBeTruthy();
+
+      const expectedX = 100 + radius * Math.cos(angle);
+      const expectedY = 100 + radius * Math.sin(angle);
+
+      expect(radiusPoint!.x).toBeCloseTo(expectedX, 5);
+      expect(radiusPoint!.y).toBeCloseTo(expectedY, 5);
+    });
+
+    it("should throw error when center is not set", () => {
+      const arcWithoutCenter = new CompassArc();
+
+      expect(() => {
+        arcWithoutCenter.setRadiusAtAngle(0, 50);
+      }).toThrow("Center point must be set before setting radius at angle");
+    });
+
+    it("should throw error when radius is too small", () => {
+      expect(() => {
+        compassArc.setRadiusAtAngle(0, 0);
+      }).toThrow("Valid radius must be greater than minimum radius");
+
+      expect(() => {
+        compassArc.setRadiusAtAngle(0, -10);
+      }).toThrow("Valid radius must be greater than minimum radius");
+    });
+
+    it("should transition to DRAWING state when startDrawingImmediately is true", () => {
+      compassArc.setRadiusAtAngle(0, 50, true);
+      expect(compassArc.getState()).toBe("DRAWING");
+    });
+
+    it("should stay in RADIUS_SET state when startDrawingImmediately is false", () => {
+      compassArc.setRadiusAtAngle(0, 50, false);
+      expect(compassArc.getState()).toBe("RADIUS_SET");
     });
   });
 });
