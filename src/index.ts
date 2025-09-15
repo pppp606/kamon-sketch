@@ -382,11 +382,24 @@ export function keyReleased(p: P5Instance): void {
 }
 
 export function mouseMoved(p: P5Instance): void {
-  // Update preview line during radius setting mode (both Shift and normal mode)
+  // Update preview line during radius setting mode
   if (drawingMode === "compass" && compassArc) {
     const state = compassArc.getState();
     if (state === "CENTER_SET") {
-      compassArc.setPreviewPoint(p.mouseX, p.mouseY);
+      if (isInShiftRadiusMode) {
+        // Shift radius mode: preview line follows mouse directly
+        compassArc.setPreviewPoint(p.mouseX, p.mouseY);
+      } else {
+        // Normal mode: preview line shows stored radius length at mouse angle
+        const center = compassArc.getCenterPoint();
+        if (center) {
+          const currentRadius = compassRadiusState.getCurrentRadius();
+          const angle = Math.atan2(p.mouseY - center.y, p.mouseX - center.x);
+          const previewEndX = center.x + currentRadius * Math.cos(angle);
+          const previewEndY = center.y + currentRadius * Math.sin(angle);
+          compassArc.setPreviewPoint(previewEndX, previewEndY);
+        }
+      }
     }
   }
 }
