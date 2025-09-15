@@ -374,8 +374,11 @@ export function mouseMoved(p: P5Instance): void {
 }
 
 export function doubleClicked(p: P5Instance): void {
+  // Check Shift key state directly from p5.js keyIsDown
+  const shiftPressed = p.keyIsDown && p.keyIsDown(p.SHIFT);
+
   // Handle Shift+double-click for compass mode (new functionality)
-  if (isShiftPressed && drawingMode === 'compass') {
+  if (shiftPressed && drawingMode === 'compass') {
     const clickPoint = { x: p.mouseX, y: p.mouseY }
     const selectedElement = selection.getSelectedElement()
 
@@ -383,30 +386,20 @@ export function doubleClicked(p: P5Instance): void {
     selection.setSelectedElement(null)
 
     if (selectedElement) {
-      // Shift+double-click on selected element: use closest point on element as center,
-      // then calculate radius from center to click position and start drawing
+      // Shift+double-click on selected element: use closest point on element as center
       const closestPoint = selection.getClosestPointOnElement(clickPoint, selectedElement)
       if (closestPoint) {
         compassArc.reset()
-        // Use setRadiusAndStartDrawing with center at closest point and radius to click position
         compassArc.setCenter(closestPoint.x, closestPoint.y)
-        compassArc.setRadiusAndStartDrawing(p.mouseX, p.mouseY)
-
-        // Update stored radius state
-        const newRadius = compassArc.getRadius()
-        compassRadiusState.updateRadius(newRadius)
+        isInShiftRadiusMode = true; // Enable preview line mode
+        // Now wait for next click to set radius (normal flow continues)
       }
     } else {
-      // Shift+double-click on empty space: set center at click position,
-      // use current stored radius, and start drawing immediately
+      // Shift+double-click on empty space: set center at click position
       compassArc.reset()
       compassArc.setCenter(p.mouseX, p.mouseY)
-
-      // Use current stored radius to set radius point and start drawing immediately
-      const currentRadius = compassRadiusState.getCurrentRadius()
-      compassArc.setRadiusDistance(currentRadius)
-      compassArc.startDrawing()
-      compassArc.updateDrawing(p.mouseX, p.mouseY)
+      isInShiftRadiusMode = true; // Enable preview line mode
+      // Now wait for next click to set radius (normal flow continues)
     }
     return
   }

@@ -611,13 +611,13 @@ describe('p5.js integration', () => {
       // Should set center at double-click position
       expect(arc?.getCenterPoint()).toEqual({ x: 200, y: 150 });
 
-      // Should immediately be in DRAWING state (bypassing normal CENTER_SET -> second click)
-      expect(arc?.getState()).toBe('DRAWING');
+      // Should be in CENTER_SET state (waiting for radius click in 3-step workflow)
+      expect(arc?.getState()).toBe('CENTER_SET');
 
-      // Should use stored radius (default 50)
-      expect(arc?.getRadius()).toBe(50);
+      // Should have no radius yet (not set until next click)
+      expect(arc?.getRadius()).toBe(0);
 
-      // Radius state should remain the same since we used stored radius
+      // Radius state should remain the same
       expect(radiusState.getCurrentRadius()).toBe(50);
     });
 
@@ -634,9 +634,8 @@ describe('p5.js integration', () => {
       const arc = getCompassArc();
       const expectedRadius = Math.sqrt((150 - 150) ** 2 + (200 - 200) ** 2); // Both are same initially
 
-      // The actual radius should be calculated from center to double-click position
-      // But for double-click on empty space, we need to set up proper center first
-      expect(arc?.getState()).toBe('DRAWING');
+      // Should be in CENTER_SET state (3-step workflow)
+      expect(arc?.getState()).toBe('CENTER_SET');
     });
 
     test('should work when Shift+double-clicking on selected element', () => {
@@ -678,8 +677,8 @@ describe('p5.js integration', () => {
       expect(arc?.getCenterPoint()?.x).toBeCloseTo(150, 1);
       expect(arc?.getCenterPoint()?.y).toBeCloseTo(105, 1); // At click position due to implementation details
 
-      // Should use setRadiusAndStartDrawing with distance from center to click position
-      expect(arc?.getState()).toBe('DRAWING');
+      // Should be in CENTER_SET state (3-step workflow)
+      expect(arc?.getState()).toBe('CENTER_SET');
     });
 
     test('should save radius to CompassRadiusState during Shift+double-click on selected element', () => {
@@ -718,8 +717,8 @@ describe('p5.js integration', () => {
       const arc = getCompassArc();
       const newRadius = arc?.getRadius();
 
-      // The new radius should be saved to state
-      expect(radiusState.getCurrentRadius()).toBe(newRadius);
+      // No radius is set yet in 3-step workflow, so current radius stays the same
+      expect(radiusState.getCurrentRadius()).toBe(100); // Should remain at original value
       // Note: The radius may or may not be different depending on geometry
     });
 
@@ -739,9 +738,9 @@ describe('p5.js integration', () => {
 
       const arc = getCompassArc();
 
-      // Should be in DRAWING state
-      expect(arc?.getState()).toBe('DRAWING');
-      expect(arc?.getRadius()).toBe(10); // Should use the stored radius
+      // Should be in CENTER_SET state (3-step workflow)
+      expect(arc?.getState()).toBe('CENTER_SET');
+      expect(arc?.getRadius()).toBe(0); // No radius set yet in 3-step workflow
     });
   });
 
