@@ -454,6 +454,82 @@ describe("CompassArc", () => {
     });
   });
 
+  describe("setRadiusAndStartDrawing", () => {
+    beforeEach(() => {
+      compassArc = new CompassArc();
+    });
+
+    it("should throw error when center point is not set", () => {
+      expect(() => compassArc.setRadiusAndStartDrawing(150, 200)).toThrow(
+        "Center point must be set before setting radius and starting drawing",
+      );
+    });
+
+    it("should calculate radius distance from center to click position", () => {
+      compassArc.setCenter(100, 100);
+      compassArc.setRadiusAndStartDrawing(150, 200);
+
+      const expectedRadius = Math.sqrt((150 - 100) ** 2 + (200 - 100) ** 2); // sqrt(50^2 + 100^2) = sqrt(12500) ≈ 111.8
+      expect(compassArc.getRadius()).toBeCloseTo(expectedRadius, 2);
+    });
+
+    it("should set radius point at correct angle from center through click position", () => {
+      compassArc.setCenter(100, 100);
+      compassArc.setRadiusAndStartDrawing(150, 200);
+
+      const radiusPoint = compassArc.getRadiusPoint();
+      expect(radiusPoint).not.toBeNull();
+
+      // The radius point should be at the calculated radius distance from center in the direction of the click
+      const expectedRadius = Math.sqrt((150 - 100) ** 2 + (200 - 100) ** 2);
+      const angle = Math.atan2(200 - 100, 150 - 100);
+      const expectedRadiusPoint = {
+        x: 100 + expectedRadius * Math.cos(angle),
+        y: 100 + expectedRadius * Math.sin(angle),
+      };
+
+      expect(radiusPoint?.x).toBeCloseTo(expectedRadiusPoint.x, 2);
+      expect(radiusPoint?.y).toBeCloseTo(expectedRadiusPoint.y, 2);
+    });
+
+    it("should immediately transition to DRAWING state", () => {
+      compassArc.setCenter(100, 100);
+      compassArc.setRadiusAndStartDrawing(150, 200);
+
+      expect(compassArc.getState()).toBe("DRAWING");
+    });
+
+    it("should handle edge case with zero radius (same position as center)", () => {
+      compassArc.setCenter(100, 100);
+      compassArc.setRadiusAndStartDrawing(100, 100);
+
+      expect(compassArc.getRadius()).toBe(0);
+      expect(compassArc.getState()).toBe("DRAWING");
+    });
+
+    it("should handle negative coordinates correctly", () => {
+      compassArc.setCenter(-50, -50);
+      compassArc.setRadiusAndStartDrawing(-20, -80);
+
+      const expectedRadius = Math.sqrt((-20 - (-50)) ** 2 + (-80 - (-50)) ** 2); // sqrt(30^2 + 30^2) ≈ 42.43
+      expect(compassArc.getRadius()).toBeCloseTo(expectedRadius, 2);
+      expect(compassArc.getState()).toBe("DRAWING");
+    });
+
+    it("should reset angle tracking when starting drawing", () => {
+      compassArc.setCenter(100, 100);
+      compassArc.setRadiusAndStartDrawing(150, 100); // radius point at (150, 100)
+
+      // Initially total angle should be 0
+      expect(compassArc.getTotalAngle()).toBe(0);
+
+      // After updating drawing, it should track angles correctly
+      // From (150, 100) to (100, 150) is a quarter rotation counterclockwise = PI/2
+      compassArc.updateDrawing(100, 150);
+      expect(compassArc.getTotalAngle()).toBeCloseTo(Math.PI / 2, 2);
+    });
+  });
+
   describe("p5.js drawing consistency", () => {
     let p: P5Instance;
 

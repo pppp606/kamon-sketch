@@ -382,16 +382,63 @@ export function keyReleased(p: P5Instance): void {
 }
 
 export function mouseMoved(p: P5Instance): void {
-  // Update preview line during Shift+click radius setting mode
-  if (drawingMode === "compass" && compassArc && isInShiftRadiusMode) {
+  // Update preview line during radius setting mode
+  if (drawingMode === "compass" && compassArc) {
     const state = compassArc.getState();
     if (state === "CENTER_SET") {
-      compassArc.setPreviewPoint(p.mouseX, p.mouseY);
+      if (isInShiftRadiusMode) {
+        // Shift radius mode: preview line follows mouse directly
+        compassArc.setPreviewPoint(p.mouseX, p.mouseY);
+      } else {
+        // Normal mode: preview line shows stored radius length at mouse angle
+        const center = compassArc.getCenterPoint();
+        if (center) {
+          const currentRadius = compassRadiusState.getCurrentRadius();
+          const angle = Math.atan2(p.mouseY - center.y, p.mouseX - center.x);
+          const previewEndX = center.x + currentRadius * Math.cos(angle);
+          const previewEndY = center.y + currentRadius * Math.sin(angle);
+          compassArc.setPreviewPoint(previewEndX, previewEndY);
+        }
+      }
     }
   }
 }
 
 export function doubleClicked(p: P5Instance): void {
+  // Check Shift key state directly from p5.js keyIsDown
+  const shiftPressed = p.keyIsDown && p.keyIsDown(p.SHIFT);
+
+  // Handle Shift+double-click for compass mode (new functionality)
+  if (shiftPressed && drawingMode === "compass") {
+    const clickPoint = { x: p.mouseX, y: p.mouseY };
+    const selectedElement = selection.getSelectedElement();
+
+    // Clear any selection first
+    selection.setSelectedElement(null);
+
+    if (selectedElement) {
+      // Shift+double-click on selected element: use closest point on element as center
+      const closestPoint = selection.getClosestPointOnElement(
+        clickPoint,
+        selectedElement,
+      );
+      if (closestPoint) {
+        compassArc.reset();
+        compassArc.setCenter(closestPoint.x, closestPoint.y);
+        isInShiftRadiusMode = true; // Enable preview line mode
+        // Now wait for next click to set radius (normal flow continues)
+      }
+    } else {
+      // Shift+double-click on empty space: set center at click position
+      compassArc.reset();
+      compassArc.setCenter(p.mouseX, p.mouseY);
+      isInShiftRadiusMode = true; // Enable preview line mode
+      // Now wait for next click to set radius (normal flow continues)
+    }
+    return;
+  }
+
+  // Handle normal double-click (existing functionality)
   const selectedElement = selection.getSelectedElement();
 
   if (!selectedElement) {
