@@ -382,8 +382,8 @@ export function keyReleased(p: P5Instance): void {
 }
 
 export function mouseMoved(p: P5Instance): void {
-  // Update preview line during Shift+click radius setting mode
-  if (drawingMode === "compass" && compassArc && isInShiftRadiusMode) {
+  // Update preview line during radius setting mode (both Shift and normal mode)
+  if (drawingMode === "compass" && compassArc) {
     const state = compassArc.getState();
     if (state === "CENTER_SET") {
       compassArc.setPreviewPoint(p.mouseX, p.mouseY);
