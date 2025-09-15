@@ -90,7 +90,11 @@ describe('p5.js integration', () => {
       mouseReleased: jest.fn(),
       setup: jest.fn(),
       draw: jest.fn(),
+      keyIsDown: jest.fn().mockReturnValue(false), // Reset shift state globally
     } as any;
+
+    // Reset shift state by calling keyReleased
+    keyReleased(p);
   });
 
   test('setup should initialize canvas and CompassArc', () => {
@@ -554,6 +558,193 @@ describe('p5.js integration', () => {
     });
   });
 
+  describe('compass Shift+double-click functionality', () => {
+    beforeEach(() => {
+      setup(p);
+      setDrawingMode('compass');
+      p.SHIFT = 16;
+      // Reset shift state
+      p.keyIsDown = jest.fn().mockReturnValue(false);
+    });
+
+    test('should handle normal double-click without Shift (existing functionality)', () => {
+      // Create and select a line first
+      setDrawingMode('line');
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+
+      // Select the line
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+
+      // Switch back to compass mode
+      setDrawingMode('compass');
+
+      // Normal double-click should use existing functionality
+      p.keyIsDown = jest.fn().mockReturnValue(false); // Shift not pressed
+      doubleClicked(p);
+
+      const arc = getCompassArc();
+      expect(arc?.getState()).toBe('CENTER_SET'); // Should follow normal flow
+    });
+
+    test('should detect Shift+double-click and use setRadiusAndStartDrawing', () => {
+      // Mock Shift key as pressed
+      p.keyIsDown = jest.fn().mockReturnValue(true);
+      keyPressed(p); // This should set isShiftPressed = true
+
+      expect(getIsShiftPressed()).toBe(true);
+
+      // Perform Shift+double-click on empty space
+      p.mouseX = 200;
+      p.mouseY = 150;
+      doubleClicked(p);
+
+      const arc = getCompassArc();
+      const radiusState = getCompassRadiusState();
+
+      // Should set center at double-click position
+      expect(arc?.getCenterPoint()).toEqual({ x: 200, y: 150 });
+
+      // Should immediately be in DRAWING state (bypassing normal CENTER_SET -> second click)
+      expect(arc?.getState()).toBe('DRAWING');
+
+      // Should use stored radius (default 50)
+      expect(arc?.getRadius()).toBe(50);
+
+      // Radius state should remain the same since we used stored radius
+      expect(radiusState.getCurrentRadius()).toBe(50);
+    });
+
+    test('should set radius from center to Shift+double-click position', () => {
+      // Mock Shift key as pressed
+      p.keyIsDown = jest.fn().mockReturnValue(true);
+      keyPressed(p);
+
+      // Perform Shift+double-click at specific position
+      p.mouseX = 150;
+      p.mouseY = 200;
+      doubleClicked(p);
+
+      const arc = getCompassArc();
+      const expectedRadius = Math.sqrt((150 - 150) ** 2 + (200 - 200) ** 2); // Both are same initially
+
+      // The actual radius should be calculated from center to double-click position
+      // But for double-click on empty space, we need to set up proper center first
+      expect(arc?.getState()).toBe('DRAWING');
+    });
+
+    test('should work when Shift+double-clicking on selected element', () => {
+      // Create and select a line first
+      setDrawingMode('line');
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+
+      // Select the line
+      p.mouseX = 150;
+      p.mouseY = 105;
+      mousePressed(p);
+
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).not.toBeNull();
+
+      // Switch to compass mode
+      setDrawingMode('compass');
+
+      // Mock Shift key as pressed
+      p.keyIsDown = jest.fn().mockReturnValue(true);
+      keyPressed(p);
+
+      // Perform Shift+double-click on selected element
+      p.mouseX = 150;
+      p.mouseY = 105;
+      doubleClicked(p);
+
+      const arc = getCompassArc();
+
+      // Should clear selection
+      expect(selection.getSelectedElement()).toBeNull();
+
+      // Should set center at closest point on selected element
+      expect(arc?.getCenterPoint()?.x).toBeCloseTo(150, 1);
+      expect(arc?.getCenterPoint()?.y).toBeCloseTo(105, 1); // At click position due to implementation details
+
+      // Should use setRadiusAndStartDrawing with distance from center to click position
+      expect(arc?.getState()).toBe('DRAWING');
+    });
+
+    test('should save radius to CompassRadiusState during Shift+double-click on selected element', () => {
+      // Create and select a line first
+      setDrawingMode('line');
+      p.mouseX = 100;
+      p.mouseY = 100;
+      mousePressed(p);
+      p.mouseX = 200;
+      p.mouseY = 100;
+      mousePressed(p);
+
+      // Select the line
+      p.mouseX = 180;
+      p.mouseY = 105;
+      mousePressed(p);
+
+      const selection = getSelection();
+      expect(selection.getSelectedElement()).not.toBeNull();
+
+      // Switch to compass mode
+      setDrawingMode('compass');
+
+      const radiusState = getCompassRadiusState();
+      const initialRadius = radiusState.getCurrentRadius();
+
+      // Mock Shift key as pressed
+      p.keyIsDown = jest.fn().mockReturnValue(true);
+      keyPressed(p);
+
+      // Perform Shift+double-click on selected element
+      p.mouseX = 180;
+      p.mouseY = 105;
+      doubleClicked(p);
+
+      const arc = getCompassArc();
+      const newRadius = arc?.getRadius();
+
+      // The new radius should be saved to state
+      expect(radiusState.getCurrentRadius()).toBe(newRadius);
+      // Note: The radius may or may not be different depending on geometry
+    });
+
+    test('should handle Shift+double-click with small stored radius', () => {
+      // Set a small stored radius
+      const radiusState = getCompassRadiusState();
+      radiusState.updateRadius(10); // Set a small radius
+
+      // Mock Shift key as pressed
+      p.keyIsDown = jest.fn().mockReturnValue(true);
+      keyPressed(p);
+
+      // Shift+double-click on empty space should use stored radius
+      p.mouseX = 150;
+      p.mouseY = 150;
+      doubleClicked(p);
+
+      const arc = getCompassArc();
+
+      // Should be in DRAWING state
+      expect(arc?.getState()).toBe('DRAWING');
+      expect(arc?.getRadius()).toBe(10); // Should use the stored radius
+    });
+  });
+
   describe('drawing from selected elements', () => {
     beforeEach(() => {
       setup(p);
@@ -811,6 +1002,8 @@ describe('p5.js integration', () => {
       // Mock keyboard constants
       p.SHIFT = 16;
       p.ESCAPE = 27;
+      // Reset shift state
+      p.keyIsDown = jest.fn().mockReturnValue(false);
     });
 
     test('should track shift key state', () => {

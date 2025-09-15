@@ -374,15 +374,53 @@ export function mouseMoved(p: P5Instance): void {
 }
 
 export function doubleClicked(p: P5Instance): void {
+  // Handle Shift+double-click for compass mode (new functionality)
+  if (isShiftPressed && drawingMode === 'compass') {
+    const clickPoint = { x: p.mouseX, y: p.mouseY }
+    const selectedElement = selection.getSelectedElement()
+
+    // Clear any selection first
+    selection.setSelectedElement(null)
+
+    if (selectedElement) {
+      // Shift+double-click on selected element: use closest point on element as center,
+      // then calculate radius from center to click position and start drawing
+      const closestPoint = selection.getClosestPointOnElement(clickPoint, selectedElement)
+      if (closestPoint) {
+        compassArc.reset()
+        // Use setRadiusAndStartDrawing with center at closest point and radius to click position
+        compassArc.setCenter(closestPoint.x, closestPoint.y)
+        compassArc.setRadiusAndStartDrawing(p.mouseX, p.mouseY)
+
+        // Update stored radius state
+        const newRadius = compassArc.getRadius()
+        compassRadiusState.updateRadius(newRadius)
+      }
+    } else {
+      // Shift+double-click on empty space: set center at click position,
+      // use current stored radius, and start drawing immediately
+      compassArc.reset()
+      compassArc.setCenter(p.mouseX, p.mouseY)
+
+      // Use current stored radius to set radius point and start drawing immediately
+      const currentRadius = compassRadiusState.getCurrentRadius()
+      compassArc.setRadiusDistance(currentRadius)
+      compassArc.startDrawing()
+      compassArc.updateDrawing(p.mouseX, p.mouseY)
+    }
+    return
+  }
+
+  // Handle normal double-click (existing functionality)
   const selectedElement = selection.getSelectedElement()
-  
+
   if (!selectedElement) {
     return
   }
 
   const clickPoint = { x: p.mouseX, y: p.mouseY }
   const closestPoint = selection.getClosestPointOnElement(clickPoint, selectedElement)
-  
+
   if (!closestPoint) {
     return
   }
@@ -397,7 +435,7 @@ export function doubleClicked(p: P5Instance): void {
     compassArc.reset()
     compassArc.setCenter(closestPoint.x, closestPoint.y)
   }
-  
+
   // Clear selection after starting new drawing
   selection.setSelectedElement(null)
 }

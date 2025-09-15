@@ -66,6 +66,31 @@ export class CompassArc {
     this.state = 'RADIUS_SET'
   }
 
+  setRadiusAndStartDrawing(x: number, y: number): void {
+    if (!this.centerPoint) {
+      throw new Error('Center point must be set before setting radius and starting drawing')
+    }
+
+    // Calculate radius distance from center to click position
+    const radius = Math.sqrt((x - this.centerPoint.x) ** 2 + (y - this.centerPoint.y) ** 2)
+
+    // Set radius point at the calculated distance from center in direction of click position
+    if (radius > 0) {
+      const angle = Math.atan2(y - this.centerPoint.y, x - this.centerPoint.x)
+      this.radiusPoint = {
+        x: this.centerPoint.x + radius * Math.cos(angle),
+        y: this.centerPoint.y + radius * Math.sin(angle)
+      }
+    } else {
+      // Handle zero radius case (click at same position as center)
+      this.radiusPoint = { x: this.centerPoint.x, y: this.centerPoint.y }
+    }
+
+    // Immediately transition to DRAWING state
+    this.state = 'DRAWING'
+    this.resetAngleTracking()
+  }
+
   startDrawing(): void {
     if (this.state !== 'RADIUS_SET') {
       throw new Error('Radius must be set before drawing')
