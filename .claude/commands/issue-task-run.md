@@ -57,12 +57,12 @@ description: Github Issueからタスクを実行し、プルリクエスト作�
 
 **なぜ必須か**:
 - TypeScriptは事前コンパイルが必要
-- ブラウザでの実際の動作はテストだけでは検証できない  
+- ブラウザでの実際の動作はテストだけでは検証できない
 - ユーザー向けUIや描画機能は手動確認が不可欠
 - **CI/CDパイプライン**: GitHub ActionsのPR Checksで同じ品質基準を自動実行
   - ✅ TypeScript 型チェック
   - ✅ ESLint 準拠チェック
-  - ✅ Jest テスト実行  
+  - ✅ Jest テスト実行
   - ✅ ビルド成功
   - ✅ カバレッジ基準達成 (Lines≥80%, Functions≥80%, Branches≥70%, Statements≥80%)
 
@@ -92,7 +92,7 @@ description: Github Issueからタスクを実行し、プルリクエスト作�
 ## 処理フロー
 
 ### タスク作成 (Task Tool使用)
-- github issue #$ARGUMENTS を参照
+- ghコマンドを使って github issue #$ARGUMENTS を参照
 - **重要**: issueに「🔍 仕様明確化」セクションがある場合、「質問と回答」を必ず参照して実装方針を確認
 - このissueの内容を良く理解してタスク化してください
 - TDDメソッドを使用してタスク化
@@ -107,7 +107,10 @@ description: Github Issueからタスクを実行し、プルリクエスト作�
 - [skip ci]付きの空コミット作成
 - issueにopenされているpull requestが紐づいて存在している場合
   - 実装済み内容を確認し、実装を継続するようにする
-- pull request作成（todoをチェックリスト化）
+- 品質チェック
+  - build, lint, type, test の成功を確認
+  - testはカバレッジ品質基準に達しているか確認する
+- ghコマンドを使って pull request作成（todoをチェックリスト化）
   - pull requestのテンプレート: @.github/pull_request_template.md
 
 ### タスク実行 (各処理ごとにTask Toolを個別に使用)

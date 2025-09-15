@@ -292,8 +292,18 @@ describe('p5.js integration', () => {
       mousePressed(p);
       
       const arc = getCompassArc();
-      // Should use default radius (50px) and set radius point horizontally
-      expect(arc?.getRadiusPoint()).toEqual({ x: 150, y: 150 }); // 100 + 50 = 150
+      // Should use default radius (50px) and set radius point at angle from center through click
+      // Center: (100, 150), Click: (200, 200), Angle: atan2(50, 100) ≈ 0.4636 rad
+      // Expected radius point: center + radius * (cos(angle), sin(angle))
+      const angle = Math.atan2(200 - 150, 200 - 100); // atan2(50, 100)
+      const radius = 50;
+      const expectedRadiusPoint = {
+        x: 100 + radius * Math.cos(angle),
+        y: 150 + radius * Math.sin(angle)
+      };
+      const actualRadiusPoint = arc?.getRadiusPoint();
+      expect(actualRadiusPoint?.x).toBeCloseTo(expectedRadiusPoint.x, 5);
+      expect(actualRadiusPoint?.y).toBeCloseTo(expectedRadiusPoint.y, 5);
       expect(arc?.getState()).toBe('DRAWING');
     });
 
