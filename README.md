@@ -3,7 +3,7 @@
 [![CI](https://github.com/pppp606/kamon-sketch/actions/workflows/ci.yml/badge.svg)](https://github.com/pppp606/kamon-sketch/actions/workflows/ci.yml)
 [![PR Checks](https://github.com/pppp606/kamon-sketch/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/pppp606/kamon-sketch/actions/workflows/pr-checks.yml)
 
-Node.js + TypeScript project for kamon sketch with p5.js drawing capabilities.
+Node.js + TypeScript project for kamon sketch with p5.js drawing capabilities and OpenTelemetry testing.
 
 ## Features
 
